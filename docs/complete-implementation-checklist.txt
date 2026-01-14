@@ -1,0 +1,680 @@
+═══════════════════════════════════════════════════════════════════════════════
+    HOSPITAL MANAGEMENT SYSTEM (HMS) - COMPLETE IMPLEMENTATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+VERSION: 2.0 FULL FEATURED
+TARGET: 14-16 weeks development
+INCLUDES: FREE + PRO STARTER + PRO BUSINESS + ENTERPRISE Features
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 1: FOUNDATION (Week 1-2) [FREE + ALL TIERS]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Project Infrastructure
+  □ Complete plugin structure (as per plan)
+  □ Composer setup with all dependencies
+  □ NPM setup with React 18+
+  □ Webpack/Build configuration
+  □ Git repository with branching strategy
+  □ CI/CD pipeline (GitHub Actions)
+
+□ Database Schema - Complete
+  □ All 15+ core tables
+  □ Proper indexing strategy
+  □ Foreign key constraints
+  □ Migration system
+  □ Versioning system
+  □ Seeding for demo data
+
+□ Core Architecture
+  □ Plugin bootstrap (Singleton pattern)
+  □ PSR-4 autoloading
+  □ REST API architecture
+  □ React app structure
+  □ Error handling system
+  □ Logging system (error_log table)
+
+□ Setup Wizard - Enhanced [PRO]
+  □ Hospital information with branding
+  □ Unlimited doctors setup
+  □ Bed/cabin configuration (8 beds)
+  □ Complete test catalog import
+  □ Medicine database import (CSV)
+  □ Payment gateway setup (optional)
+  □ SMS/Email service configuration
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 2: PATIENT MANAGEMENT - COMPLETE (Week 2-3)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Full Patient Module
+  □ TIER: FREE (Basic) + PRO (Enhanced)
+  □ PatientManager with all features
+  □ PatientHistory tracking
+  □ PatientValidator
+  □ Barcode generation [PRO STARTER]
+  □ Photo upload & management [PRO STARTER]
+  □ File attachments (medical records) [PRO BUSINESS]
+  □ GDPR compliance (anonymization) [ENTERPRISE]
+  □ All REST API endpoints
+
+□ Frontend - Complete Patient UI
+  □ Advanced patient list with filters
+  □ Full registration form
+  □ Smart ID card generation [PRO STARTER]
+  □ Barcode scanning integration [PRO STARTER]
+  □ Medical history timeline [PRO BUSINESS]
+  □ Document management [PRO BUSINESS]
+  □ Patient search (advanced filters) [PRO]
+
+□ Patient Features by Tier
+  FREE:
+  □ 100 active patients limit
+  □ Basic demographics only
+  □ Simple search
+  
+  PRO STARTER:
+  □ Unlimited patients
+  □ Patient photos
+  □ Smart ID cards with barcode
+  □ Advanced search
+  
+  PRO BUSINESS:
+  □ Medical history with attachments
+  □ Document management
+  □ Family medical history
+  
+  ENTERPRISE:
+  □ GDPR compliance tools
+  □ Data export/import
+  □ Patient portal access
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 3: OPD MODULE - COMPLETE (Week 3-4) [PRO FEATURES]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Full OPD System
+  □ AppointmentManager (complete)
+  □ ConsultationManager [PRO BUSINESS]
+  □ Unlimited doctors support [PRO STARTER]
+  □ Advanced scheduling algorithm [PRO]
+  □ Conflict detection [PRO]
+  □ Recurring appointments [PRO BUSINESS]
+
+□ Frontend - Advanced OPD UI
+  □ Calendar view (day/week/month) [PRO STARTER]
+  □ Drag-and-drop rescheduling [PRO BUSINESS]
+  □ Doctor-wise filtering
+  □ Time slot visualization
+  □ Appointment reminders setup [PRO BUSINESS]
+  □ Walk-in patient handling
+
+□ OPD Features by Tier
+  FREE:
+  □ 50 appointments/month
+  □ 2 doctors max
+  □ Table view only
+  □ Manual booking
+  
+  PRO STARTER:
+  □ Unlimited appointments
+  □ Unlimited doctors
+  □ Calendar view
+  □ Advanced search
+  
+  PRO BUSINESS:
+  □ Online appointment booking (patient portal)
+  □ SMS/Email reminders
+  □ Drag-and-drop scheduling
+  □ Recurring appointments
+  □ No-show tracking
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 4: IPD MODULE (Week 4-5) [PRO STARTER]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - IPD System
+  □ AdmissionManager
+  □ BedAllocation (3 cabins + 5 ward beds)
+  □ TransferManager
+  □ DischargeManager
+  □ IPDBilling
+  □ Package management system
+
+□ Frontend - IPD UI
+  □ Admission form
+  □ Bed allocation dashboard
+  □ Bed status visualization (available/occupied)
+  □ Transfer modal
+  □ Discharge form with summary
+  □ Daily charges tracking
+  □ Package selector
+
+□ IPD Features
+  PRO STARTER:
+  □ Basic IPD (up to 4 beds)
+  □ Manual bed allocation
+  □ Basic discharge summary
+  
+  PRO BUSINESS:
+  □ Full 8-bed support
+  □ Package system
+  □ Automated daily charges
+  □ Comprehensive discharge summary
+  □ Transfer history tracking
+  
+  ENTERPRISE:
+  □ Custom packages
+  □ Advanced billing rules
+  □ Insurance integration
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 5: LABORATORY MODULE (Week 5-6) [PRO STARTER]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Lab System
+  □ TestManager
+  □ SampleCollection
+  □ ResultEntry
+  □ ReportGenerator (PDF)
+  □ LabelPrinter (barcode)
+  □ Test catalog management
+
+□ Frontend - Lab UI
+  □ Test order form
+  □ Test list (pending/completed)
+  □ Sample collection interface
+  □ Result entry form (with validation)
+  □ Report preview & download
+  □ Label printing
+  □ Test catalog management
+
+□ Lab Features
+  PRO STARTER:
+  □ Basic lab (10 test types)
+  □ Manual result entry
+  □ Simple PDF reports
+  
+  PRO BUSINESS:
+  □ Unlimited test types
+  □ Result templates
+  □ Automatic report generation
+  □ SMS notification when ready
+  □ Barcode label printing
+  
+  ENTERPRISE:
+  □ Lab equipment integration
+  □ Custom report templates with branding
+  □ Batch processing
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 6: OPERATION THEATRE MODULE (Week 6-7) [PRO BUSINESS]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - OT System
+  □ OTScheduler
+  □ PreOperative assessment
+  □ SurgeryManager (gynecology focus)
+  □ PostOperative monitoring
+  □ OTBilling
+  □ Consumables tracking
+
+□ Frontend - OT UI
+  □ OT booking calendar
+  □ Surgery schedule
+  □ Pre-operative form
+  □ Surgery notes form
+  □ Post-operative form
+  □ OT charges calculator
+  □ Anesthesia tracking
+
+□ OT Features
+  PRO BUSINESS:
+  □ Single OT scheduling
+  □ Basic surgery notes
+  □ OT charges calculation
+  
+  ENTERPRISE:
+  □ Multiple OT rooms
+  □ Advanced equipment tracking
+  □ Detailed consumables management
+  □ Custom surgical templates
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 7: E-PRESCRIPTION MODULE (Week 7) [PRO BUSINESS]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Prescription System
+  □ EPrescriptionManager
+  □ TemplateManager
+  □ MedicineSlipGenerator
+  □ PCRManager (Patient Clinical Records)
+  □ Medicine database integration
+
+□ Frontend - Prescription UI
+  □ Prescription creation form
+  □ Medicine selector (autocomplete)
+  □ Dosage configuration
+  □ Investigation selector
+  □ Template system
+  □ Prescription history viewer
+  □ PDF generation
+  □ Medicine slip printing
+
+□ E-Prescription Features
+  PRO BUSINESS:
+  □ Digital prescription creation
+  □ Medicine database (500+ medicines)
+  □ 10 prescription templates
+  □ PDF generation
+  □ Prescription history
+  
+  ENTERPRISE:
+  □ Unlimited medicines
+  □ Unlimited templates
+  □ Custom prescription format
+  □ Digital signature integration
+  □ E-prescription sharing (email/WhatsApp)
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 8: PHARMACY/INVENTORY (Week 8) [PRO BUSINESS]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Pharmacy System
+  □ MedicineManager
+  □ StockManager
+  □ RequisitionManager (IPD)
+  □ ExpiryTracker
+  □ PurchaseManager
+
+□ Frontend - Pharmacy UI
+  □ Medicine inventory list
+  □ Stock management
+  □ Requisition form (IPD patients)
+  □ Dispense modal
+  □ Low stock alerts
+  □ Expiry tracker
+  □ Purchase recording
+
+□ Pharmacy Features
+  PRO BUSINESS:
+  □ Medicine inventory (500 items)
+  □ Stock tracking
+  □ Expiry alerts
+  □ IPD requisition
+  
+  ENTERPRISE:
+  □ Unlimited medicines
+  □ Automated reorder suggestions
+  □ Supplier management
+  □ Purchase history tracking
+  □ Batch/lot tracking
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 9: BILLING & ACCOUNTS - COMPLETE (Week 8-9)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Full Billing System
+  □ InvoiceGenerator (all departments)
+  □ PaymentProcessor (all methods)
+  □ DuesManager (CRITICAL)
+  □ ReceiptGenerator
+  □ RefundManager [PRO BUSINESS]
+  □ DiscountManager [PRO BUSINESS]
+
+□ Frontend - Complete Billing UI
+  □ Advanced invoice creation
+  □ Multi-department billing
+  □ Payment methods (cash, card, bank, mobile)
+  □ Due invoice printing (enhanced)
+  □ Discount management
+  □ Refund processing
+  □ Payment history
+  □ Aging analysis dashboard
+
+□ Billing Features by Tier
+  FREE:
+  □ 100 invoices/month
+  □ Cash payment only
+  □ Basic due tracking
+  □ Simple PDF invoice (watermarked)
+  
+  PRO STARTER:
+  □ Unlimited invoices
+  □ All payment methods
+  □ Advanced due aging (0-7, 8-30, 30+ days)
+  □ Professional PDF invoices (no watermark)
+  □ Payment reminders
+  
+  PRO BUSINESS:
+  □ Discount management
+  □ Refund processing
+  □ Multi-currency support
+  □ Automated due reminders (SMS/Email)
+  □ Payment plan creation
+  
+  ENTERPRISE:
+  □ Custom invoice templates
+  □ Payment gateway integration (bKash, Nagad, SSL Commerce)
+  □ Advanced financial analytics
+  □ Tax management
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 10: HR & PAYROLL (Week 10) [PRO BUSINESS]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - HR System
+  □ EmployeeManager
+  □ DoctorManager
+  □ AttendanceTracker
+  □ DutyRoster
+  □ LeaveManager
+  □ PayrollProcessor
+
+□ Frontend - HR UI
+  □ Staff management
+  □ Doctor profiles
+  □ Attendance tracker
+  □ Duty roster calendar
+  □ Leave application & approval
+  □ Payroll generation
+  □ Salary slip printing
+
+□ HR Features
+  FREE:
+  □ 5 staff users max
+  □ No HR module
+  
+  PRO STARTER:
+  □ 20 staff users
+  □ Basic staff management
+  
+  PRO BUSINESS:
+  □ Unlimited staff
+  □ Attendance tracking
+  □ Leave management
+  □ Basic payroll
+  
+  ENTERPRISE:
+  □ Biometric integration
+  □ Advanced payroll (deductions, bonuses)
+  □ Performance tracking
+  □ Staff reports
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 11: BIOMETRIC INTEGRATION (Week 10-11) [ENTERPRISE]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Biometric System
+  □ Device integration (ZKTeco, Realtime, eSSL)
+  □ API/SDK integration
+  □ Auto-sync attendance
+  □ Manual fallback system
+  □ Device status monitoring
+  □ Sync logs
+
+□ Features
+  ENTERPRISE ONLY:
+  □ Multiple device support
+  □ Real-time sync
+  □ Attendance reports integrated with payroll
+  □ Device health monitoring
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 12: REPORTS & MIS (Week 11) [PRO+]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Reports Engine
+  □ FinancialReports
+  □ PatientReports
+  □ DoctorReports
+  □ DepartmentReports
+  □ MISReports
+  □ Export engine (PDF, Excel)
+
+□ Frontend - Reports Dashboard
+  □ Report selector
+  □ Date range filter
+  □ Chart visualizations (Chart.js)
+  □ Export functionality
+  □ Scheduled reports [ENTERPRISE]
+
+□ Reports by Tier
+  FREE:
+  □ 3 basic reports (current month only)
+  □ Print only
+  
+  PRO STARTER:
+  □ 10 report types
+  □ 6-month history
+  □ PDF export
+  
+  PRO BUSINESS:
+  □ 20+ report types
+  □ Unlimited history
+  □ Excel export
+  □ Charts & graphs
+  □ Custom date ranges
+  
+  ENTERPRISE:
+  □ All reports
+  □ Scheduled reports (email delivery)
+  □ Custom report builder
+  □ Advanced analytics dashboard
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 13: NOTIFICATIONS (Week 11-12) [PRO BUSINESS]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Notification System
+  □ SMSService (Bangladesh gateways)
+  □ EmailService (SMTP)
+  □ WhatsAppService [ENTERPRISE]
+  □ NotificationManager
+  □ Template system
+
+□ Notifications by Tier
+  PRO BUSINESS:
+  □ SMS notifications (appointment, lab results, due reminders)
+  □ Email notifications
+  □ 500 SMS/month included
+  
+  ENTERPRISE:
+  □ WhatsApp notifications
+  □ Unlimited SMS
+  □ Custom notification templates
+  □ Scheduled notifications
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 14: SECURITY & AUDIT (Week 12) [ALL TIERS - Enhanced in PRO]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Security Implementation
+  □ Digital signature system
+  □ Audit logging
+  □ Role-based access control (7 roles)
+  □ Data encryption [PRO BUSINESS]
+  □ GDPR compliance tools [ENTERPRISE]
+  □ Two-factor authentication [ENTERPRISE]
+
+□ Audit Features by Tier
+  FREE:
+  □ Basic audit log (30 days)
+  □ 3 roles
+  
+  PRO STARTER:
+  □ 90-day audit log
+  □ 5 roles
+  □ Digital signatures
+  
+  PRO BUSINESS:
+  □ 1-year audit log
+  □ 7 roles
+  □ Data encryption
+  □ Custom roles
+  
+  ENTERPRISE:
+  □ Unlimited audit history
+  □ GDPR tools (anonymization, export)
+  □ 2FA
+  □ Advanced security logs
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 15: BACKUP & DISASTER RECOVERY (Week 12) [PRO+]
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backup System
+  PRO STARTER:
+  □ Manual backup/restore
+  □ Local backups (7-day retention)
+  
+  PRO BUSINESS:
+  □ Automated daily backups
+  □ 30-day retention
+  □ One-click restore
+  
+  ENTERPRISE:
+  □ Cloud backup (S3, Google Drive, Dropbox)
+  □ Unlimited retention
+  □ Incremental backups
+  □ Disaster recovery plan
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 16: TESTING & QA (Week 13)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Unit Testing (PHPUnit)
+  □ All critical modules (90%+ coverage)
+  □ Billing calculations
+  □ Patient ID generation
+  □ Due calculations
+
+□ Component Testing (Jest)
+  □ React components (60%+ coverage)
+  □ Forms validation
+  □ UI interactions
+
+□ E2E Testing (Playwright)
+  □ 10 critical workflows
+  □ Patient journey
+  □ Billing workflow
+  □ Appointment booking
+
+□ Manual QA
+  □ All features tested per tier
+  □ Cross-browser testing
+  □ Mobile responsiveness
+  □ Performance testing
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 17: UI/UX POLISH & OPTIMIZATION (Week 13-14)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Performance Optimization
+  □ Caching implementation
+  □ Query optimization
+  □ Asset minification
+  □ Image optimization
+  □ Lazy loading
+
+□ UI/UX Enhancement
+  □ Professional dashboard with charts [PRO+]
+  □ Color-coded status system
+  □ Global search with barcode support
+  □ Keyboard shortcuts [PRO BUSINESS]
+  □ Dark mode [ENTERPRISE]
+  □ Responsive design (all devices)
+
+□ Accessibility
+  □ WCAG 2.1 AA compliance
+  □ Keyboard navigation
+  □ Screen reader support
+  □ High contrast mode
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 18: DOCUMENTATION & DEPLOYMENT (Week 14)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Documentation
+  □ User manual (comprehensive)
+  □ Admin guide
+  □ Video tutorials (5-10 videos)
+  □ API documentation
+  □ Developer docs (for customization)
+  □ FAQ
+
+□ WordPress.org Preparation
+  □ Free version submission
+  □ Screenshots (8-10)
+  □ Demo site setup
+  □ Support forum setup
+
+□ Commercial Site
+  □ Product website
+  □ Pricing page
+  □ Feature comparison table
+  □ License management system
+  □ Customer portal
+  □ Support ticketing system
+
+□ Deployment
+  □ Version tagging (2.0.0)
+  □ Changelog
+  □ Update system
+  □ License key validation
+  □ Auto-update for PRO versions
+
+═══════════════════════════════════════════════════════════════════════════════
+TIER-BASED FEATURE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+FREE TIER (MVP):
+✓ 100 patients, 50 appointments/month, 100 invoices/month
+✓ 2 doctors, 5 staff users
+✓ Basic OPD, Billing, Due tracking
+✓ 3 basic reports
+✓ 30-day audit log
+✓ Watermarked PDFs
+
+PRO STARTER ($99/year):
+✓ Unlimited patients, appointments, invoices
+✓ Unlimited doctors/staff
+✓ IPD module (4 beds)
+✓ Laboratory module (10 tests)
+✓ Calendar view
+✓ Smart ID cards with barcode
+✓ 10 reports + PDF export
+✓ 90-day audit log
+✓ Manual backup/restore
+
+PRO BUSINESS ($199/year):
+✓ All PRO STARTER features
+✓ Full IPD (8 beds) with packages
+✓ Full Lab (unlimited tests)
+✓ OT module
+✓ E-Prescription with templates
+✓ Pharmacy/Inventory
+✓ HR & Payroll
+✓ SMS/Email notifications (500/month)
+✓ 20+ reports with charts
+✓ Data encryption
+✓ Automated backups (30-day)
+✓ Refunds & discounts
+
+ENTERPRISE ($399/year):
+✓ All PRO BUSINESS features
+✓ Biometric integration
+✓ WhatsApp integration
+✓ Patient portal
+✓ GDPR compliance tools
+✓ Cloud backup (unlimited)
+✓ Custom report builder
+✓ 2FA
+✓ Unlimited SMS/notifications
+✓ Priority support (24/7)
+✓ Custom development (10 hours/year)
+✓ White-label option
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF COMPLETE IMPLEMENTATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,952 @@
+═══════════════════════════════════════════════════════════════════════════════
+    HMS - COMPREHENSIVE ARCHITECTURAL PLAN
+    MVP (FREE) + PRO VERSIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+VERSION: 2.0
+CREATED: 2026-01-15
+PURPOSE: Complete architectural blueprint for HMS plugin development
+
+═══════════════════════════════════════════════════════════════════════════════
+1. SYSTEM OVERVIEW
+═══════════════════════════════════════════════════════════════════════════════
+
+**Architecture Pattern:** Monolithic SPA with RESTful Backend
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         WORDPRESS ADMIN                                 │
+│  ┌───────────────────────────────────────────────────────────────────┐ │
+│  │                    HMS REACT SPA (Frontend)                       │ │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐         │ │
+│  │  │ Patients │  │   OPD    │  │ Billing  │  │  Reports │  ...    │ │
+│  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘         │ │
+│  │       │             │             │             │                 │ │
+│  │       └─────────────┴─────────────┴─────────────┘                 │ │
+│  │                           │                                        │ │
+│  │                    React Router                                   │ │
+│  │                           │                                        │ │
+│  │                    WordPress API Fetch                            │ │
+│  └───────────────────────────┼────────────────────────────────────────┘ │
+│                               │                                         │
+│                        REST API Layer                                   │
+│  ┌────────────────────────────┼────────────────────────────────────────┐ │
+│  │   /wp-json/hms/v1/*       │                                        │ │
+│  │  ┌────────────────┐  ┌───────────────┐  ┌─────────────┐          │ │
+│  │  │ Patient Routes │  │  OPD Routes   │  │ Billing     │  ...     │ │
+│  │  └───────┬────────┘  └───────┬───────┘  └──────┬──────┘          │ │
+│  │          │                    │                 │                  │ │
+│  └──────────┼────────────────────┼─────────────────┼──────────────────┘ │
+│             │                    │                 │                    │
+│      Business Logic Layer (PHP Classes)                                │
+│  ┌──────────┼────────────────────┼─────────────────┼──────────────────┐ │
+│  │  ┌───────▼─────┐      ┌───────▼──────┐  ┌──────▼──────┐          │ │
+│  │  │PatientMgr   │      │AppointmentMgr│  │InvoiceMgr   │          │ │
+│  │  └───────┬─────┘      └───────┬──────┘  └──────┬──────┘          │ │
+│  │          │                     │                │                  │ │
+│  └──────────┼─────────────────────┼────────────────┼──────────────────┘ │
+│             │                     │                │                    │
+│      Data Access Layer (Database)                                      │
+│  ┌──────────▼─────────────────────▼────────────────▼──────────────────┐ │
+│  │   MySQL Database (18 Tables)                                       │ │
+│  │   - hms_patients, hms_appointments, hms_invoices, etc.            │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+**Key Architectural Decisions:**
+
+1. **Single Page Application (SPA)** - React 18+ with React Router
+2. **RESTful API** - WordPress REST API (/wp-json/hms/v1/*)
+3. **Feature Gating** - License-based unlocking (not separate codebases)
+4. **Database-First** - All tables created Day 1, used progressively
+5. **Monorepo** - Single codebase for all tiers
+
+═══════════════════════════════════════════════════════════════════════════════
+2. TECHNOLOGY STACK (DETAILED)
+═══════════════════════════════════════════════════════════════════════════════
+
+Backend Stack:
+┌────────────────────────────────────────────────┐
+│ PHP 7.4+                                       │
+│  ├── WordPress 5.8+                            │
+│  ├── Composer (Dependency Management)          │
+│  │   ├── PSR-4 Autoloading                     │
+│  │   └── PHP CodeSniffer (WPCS)                │
+│  ├── Custom Database Tables (18 tables)        │
+│  ├── WordPress REST API                        │
+│  └── WP Cron (Background jobs)                 │
+└────────────────────────────────────────────────┘
+
+Frontend Stack:
+┌────────────────────────────────────────────────┐
+│ React 18.2+                                    │
+│  ├── @wordpress/scripts (Build tool)           │
+│  ├── @wordpress/api-fetch (HTTP client)        │
+│  ├── @wordpress/i18n (Internationalization)    │
+│  ├── React Router v6 (SPA routing)             │
+│  ├── Tailwind CSS 3+ (Styling)                 │
+│  ├── Chart.js / Recharts (PRO - Charts)        │
+│  └── React Hook Form (Form management)         │
+└────────────────────────────────────────────────┘
+
+Development Tools:
+┌────────────────────────────────────────────────┐
+│ Version Control: Git (GitHub)                  │
+│ IDE: VS Code                                   │
+│ Linting: ESLint, PHPCS                         │
+│ Testing:                                       │
+│  ├── PHPUnit (Backend unit tests)              │
+│  ├── Jest + React Testing Library (Frontend)   │
+│  └── Playwright (E2E tests)                    │
+│ CI/CD: GitHub Actions                          │
+│ Package Managers: Composer (PHP), npm (JS)     │
+└────────────────────────────────────────────────┘
+
+PDF Generation:
+┌────────────────────────────────────────────────┐
+│ Dompdf (PHP library)                           │
+│  ├── Invoice PDFs                              │
+│  ├── Lab Reports (PRO-S)                       │
+│  ├── Prescriptions (PRO-B)                     │
+│  └── Discharge Summaries (PRO-B)               │
+└────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+3. DETAILED FOLDER STRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+wphelpzone-hms/
+│
+├── wphelpzone-hms.php              # Main plugin file
+├── uninstall.php                   # Cleanup on uninstall
+├── composer.json                   # PHP dependencies
+├── package.json                    # JS dependencies
+├── .gitignore
+├── README.md
+│
+├── inc/                            # PHP Backend
+│   ├── Core/                       # Core system classes
+│   │   ├── Main.php               # Plugin bootstrap
+│   │   ├── Activator.php          # Activation hooks
+│   │   ├── Deactivator.php        # Deactivation hooks
+│   │   ├── Database.php           # DB schema & migrations
+│   │   ├── LicenseManager.php     # Tier management [CRITICAL]
+│   │   ├── ErrorLogger.php        # Error handling
+│   │   └── BackupManager.php      # Backup system [PRO-B]
+│   │
+│   ├── API/                        # REST API Controllers
+│   │   ├── RestController.php     # Base controller with auth
+│   │   ├── PatientsController.php # [MVP]
+│   │   ├── AppointmentsController.php # [MVP]
+│   │   ├── InvoicesController.php # [MVP]
+│   │   ├── PaymentsController.php # [MVP]
+│   │   ├── IPDController.php      # [PRO-S]
+│   │   ├── LabController.php      # [PRO-S]
+│   │   ├── OTController.php       # [PRO-B]
+│   │   ├── PrescriptionsController.php # [PRO-B]
+│   │   ├── PharmacyController.php # [PRO-B]
+│   │   ├── HRController.php       # [PRO-B]
+│   │   ├── ReportsController.php  # [ALL - features vary]
+│   │   └── SettingsController.php # [ALL]
+│   │
+│   ├── Patients/                   # Patient module [MVP]
+│   │   ├── PatientManager.php     # CRUD operations
+│   │   ├── PatientValidator.php   # Data validation
+│   │   └── PatientHistory.php     # Medical history [PRO-B]
+│   │
+│   ├── OPD/                        # OPD module [MVP]
+│   │   ├── AppointmentManager.php # Scheduling
+│   │   ├── ConsultationManager.php # [PRO-B]
+│   │   └── ScheduleHelper.php     # Time slot logic
+│   │
+│   ├── IPD/                        # IPD module [PRO-S]
+│   │   ├── AdmissionManager.php
+│   │   ├── BedAllocation.php
+│   │   ├── DischargeManager.php
+│   │   ├── TransferManager.php
+│   │   └── PackageManager.php     # [PRO-B]
+│   │
+│   ├── Laboratory/                 # Lab module [PRO-S]
+│   │   ├── TestManager.php
+│   │   ├── SampleCollection.php
+│   │   ├── ResultEntry.php
+│   │   ├── ReportGenerator.php    # PDF reports
+│   │   └── LabelPrinter.php       # Barcode labels [PRO-B]
+│   │
+│   ├── OT/                         # OT module [PRO-B]
+│   │   ├── OTScheduler.php
+│   │   ├── SurgeryManager.php
+│   │   └── ConsumablesTracker.php # [ENT]
+│   │
+│   ├── Prescription/               # E-Prescription [PRO-B]
+│   │   ├── EPrescriptionManager.php
+│   │   ├── TemplateManager.php
+│   │   └── MedicineDatabase.php
+│   │
+│   ├── Billing/                    # Billing module [MVP]
+│   │   ├── InvoiceGenerator.php   # Core billing
+│   │   ├── PaymentProcessor.php
+│   │   ├── DuesManager.php        # [CRITICAL]
+│   │   ├── ReceiptGenerator.php
+│   │   ├── DiscountManager.php    # [PRO-B]
+│   │   └── RefundManager.php      # [PRO-B]
+│   │
+│   ├── Pharmacy/                   # Pharmacy module [PRO-B]
+│   │   ├── MedicineManager.php
+│   │   ├── StockManager.php
+│   │   ├── RequisitionManager.php
+│   │   └── ExpiryTracker.php
+│   │
+│   ├── HR/                         # HR module [PRO-B]
+│   │   ├── EmployeeManager.php
+│   │   ├── AttendanceTracker.php
+│   │   ├── LeaveManager.php
+│   │   ├── PayrollProcessor.php
+│   │   └── BiometricIntegration.php # [ENT]
+│   │
+│   ├── Reports/                    # Reports module [ALL]
+│   │   ├── FinancialReports.php
+│   │   ├── PatientReports.php
+│   │   ├── DoctorReports.php
+│   │   ├── DepartmentReports.php
+│   │   ├── MISReports.php         # [PRO-B]
+│   │   └── CustomReportBuilder.php # [ENT]
+│   │
+│   ├── Notifications/              # Notifications [PRO-B]
+│   │   ├── SMSService.php
+│   │   ├── EmailService.php
+│   │   ├── WhatsAppService.php    # [ENT]
+│   │   └── NotificationManager.php
+│   │
+│   ├── Security/                   # Security & Audit [ALL]
+│   │   ├── RoleManager.php        # RBAC (7 roles)
+│   │   ├── DigitalSignature.php   # Transaction audit
+│   │   ├── DataEncryption.php     # [PRO-B]
+│   │   └── GDPRTools.php          # [ENT]
+│   │
+│   ├── Admin/                      # WordPress Admin integration
+│   │   ├── MenuBuilder.php        # Admin menu
+│   │   ├── SetupWizard.php        # Initial setup
+│   │   └── SettingsPage.php
+│   │
+│   └── Helpers/                    # Utility classes
+│       ├── DateHelper.php
+│       ├── NumberHelper.php
+│       ├── Sanitizer.php
+│       └── Validator.php
+│
+├── assets/                         # Frontend Assets
+│   ├── src/                        # React source
+│   │   ├── index.js               # Entry point
+│   │   ├── App.js                 # Root component
+│   │   ├── index.css              # Global styles (Tailwind)
+│   │   │
+│   │   ├── components/             # React components
+│   │   │   ├── common/             # Shared components
+│   │   │   │   ├── Layout.js      # Main layout
+│   │   │   │   ├── Sidebar.js     # Navigation
+│   │   │   │   ├── Header.js
+│   │   │   │   ├── Button.js
+│   │   │   │   ├── Input.js
+│   │   │   │   ├── Modal.js
+│   │   │   │   ├── Table.js
+│   │   │   │   ├── Card.js
+│   │   │   │   ├── ErrorBoundary.js
+│   │   │   │   ├── Loading.js
+│   │   │   │   └── UpgradePrompt.js # For locked features
+│   │   │   │
+│   │   │   ├── patients/           # [MVP]
+│   │   │   │   ├── PatientList.js
+│   │   │   │   ├── PatientForm.js
+│   │   │   │   ├── PatientDetail.js
+│   │   │   │   ├── PatientCard.js
+│   │   │   │   └── PatientSearch.js
+│   │   │   │
+│   │   │   ├── opd/                # [MVP]
+│   │   │   │   ├── AppointmentList.js
+│   │   │   │   ├── AppointmentForm.js
+│   │   │   │   ├── AppointmentCalendar.js # [PRO-S]
+│   │   │   │   └── DoctorSchedule.js
+│   │   │   │
+│   │   │   ├── ipd/                # [PRO-S]
+│   │   │   │   ├── AdmissionForm.js
+│   │   │   │   ├── BedAllocation.js
+│   │   │   │   ├── DischargeForm.js
+│   │   │   │   └── IPDDashboard.js
+│   │   │   │
+│   │   │   ├── laboratory/         # [PRO-S]
+│   │   │   │   ├── TestOrderForm.js
+│   │   │   │   ├── TestList.js
+│   │   │   │   ├── ResultEntry.js
+│   │   │   │   └── ReportViewer.js
+│   │   │   │
+│   │   │   ├── ot/                 # [PRO-B]
+│   │   │   │   ├── OTBookingForm.js
+│   │   │   │   ├── OTSchedule.js
+│   │   │   │   └── SurgeryNotes.js
+│   │   │   │
+│   │   │   ├── prescriptions/      # [PRO-B]
+│   │   │   │   ├── PrescriptionForm.js
+│   │   │   │   ├── MedicineSelector.js
+│   │   │   │   └── TemplateSelector.js
+│   │   │   │
+│   │   │   ├── pharmacy/           # [PRO-B]
+│   │   │   │   ├── InventoryList.js
+│   │   │   │   ├── StockManagement.js
+│   │   │   │   └── ExpiryAlerts.js
+│   │   │   │
+│   │   │   ├── billing/            # [MVP]
+│   │   │   │   ├── InvoiceForm.js
+│   │   │   │   ├── InvoiceList.js
+│   │   │   │   ├── PaymentModal.js
+│   │   │   │   ├── DueInvoices.js # CRITICAL
+│   │   │   │   └── ReceiptPrint.js
+│   │   │   │
+│   │   │   ├── hr/                 # [PRO-B]
+│   │   │   │   ├── StaffList.js
+│   │   │   │   ├── AttendanceTracker.js
+│   │   │   │   └── PayrollForm.js
+│   │   │   │
+│   │   │   ├── reports/            # [ALL - varies]
+│   │   │   │   ├── ReportSelector.js
+│   │   │   │   ├── ReportViewer.js
+│   │   │   │   ├── ChartDashboard.js # [PRO-B]
+│   │   │   │   └── CustomReportBuilder.js # [ENT]
+│   │   │   │
+│   │   │   └── dashboard/          # [ALL]
+│   │   │       ├── Dashboard.js
+│   │   │       ├── StatsCard.js
+│   │   │       └── QuickActions.js
+│   │   │
+│   │   ├── hooks/                  # Custom React hooks
+│   │   │   ├── usePatients.js
+│   │   │   ├── useAppointments.js
+│   │   │   ├── useInvoices.js
+│   │   │   ├── useLicense.js      # Check tier & features
+│   │   │   ├── usePermissions.js  # Check user capabilities
+│   │   │   └── useApi.js          # Generic API hook
+│   │   │
+│   │   ├── utils/                  # JavaScript utilities
+│   │   │   ├── api.js             # API helpers
+│   │   │   ├── license.js         # License checking
+│   │   │   ├── format.js          # Number/date formatting
+│   │   │   └── validation.js      # Form validation
+│   │   │
+│   │   └── routes/                 # Route definitions
+│   │       └── index.js           # All routes
+│   │
+│   ├── build/                      # Built assets (gitignored)
+│   │   ├── index.js               # Compiled React
+│   │   └── index.asset.php        # WP script dependencies
+│   │
+│   └── css/                        # Additional CSS (if needed)
+│       └── admin.css
+│
+├── languages/                      # i18n files
+│   ├── wphelpzone-hms.pot         # Translation template
+│   ├── wphelpzone-hms-bn_BD.po    # Bengali
+│   └── wphelpzone-hms-bn_BD.mo    # Compiled Bengali
+│
+├── tests/                          # Automated tests
+│   ├── php/                        # PHPUnit tests
+│   │   ├── Billing/
+│   │   │   └── DuesCalculationTest.php
+│   │   └── Patients/
+│   │       └── PatientManagerTest.php
+│   │
+│   ├── js/                         # Jest tests
+│   │   └── components/
+│   │       └── __tests__/
+│   │           └── PatientForm.test.js
+│   │
+│   └── e2e/                        # Playwright E2E
+│       ├── patient-registration.spec.js
+│       └── billing-workflow.spec.js
+│
+├── scripts/                        # Build & deployment scripts
+│   ├── build-tier.sh              # Build specific tier
+│   └── deploy.sh
+│
+├── docs/                           # Documentation
+│   ├── user-guide.md
+│   └── api-reference.md
+│
+└── vendor/                         # Composer dependencies (gitignored)
+
+═══════════════════════════════════════════════════════════════════════════════
+4. MODULE ARCHITECTURE (MVP vs PRO)
+═══════════════════════════════════════════════════════════════════════════════
+
+MVP Modules (FREE Tier):
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Patient Management                                       │
+│    - Register patients (limit: 100)                        │
+│    - Basic demographics                                    │
+│    - Search by name/phone/ID                               │
+│    Classes: PatientManager, PatientValidator               │
+│    Routes: /hms/v1/patients                                │
+│                                                             │
+│ 2. OPD Appointments                                         │
+│    - Book appointments (limit: 50/month)                   │
+│    - Manage 2 doctors max                                  │
+│    - Table view only (no calendar)                         │
+│    Classes: AppointmentManager, ScheduleHelper             │
+│    Routes: /hms/v1/appointments                            │
+│                                                             │
+│ 3. Billing & Invoicing                                      │
+│    - Create invoices (limit: 100/month)                    │
+│    - Record payments (cash only)                           │
+│    - Track dues (basic aging: 0-30, 30+ days)              │
+│    - Simple PDF (watermarked)                              │
+│    Classes: InvoiceGenerator, PaymentProcessor,            │
+│             DuesManager (CRITICAL)                          │
+│    Routes: /hms/v1/invoices, /hms/v1/payments              │
+│                                                             │
+│ 4. Basic Reports                                            │
+│    - 3 reports: Daily cash, Due summary, Patient count     │
+│    - Current month only                                    │
+│    - Print only (no PDF/Excel export)                      │
+│    Classes: FinancialReports (basic)                       │
+│    Routes: /hms/v1/reports                                 │
+│                                                             │
+│ 5. User Management                                          │
+│    - 3 roles: Admin, Receptionist, Doctor                  │
+│    - Up to 5 staff users                                   │
+│    Classes: RoleManager (basic)                            │
+│                                                             │
+│ 6. Basic Audit                                              │
+│    - 30-day retention                                      │
+│    - Track invoice/payment actions                         │
+│    Classes: DigitalSignature (basic)                       │
+└─────────────────────────────────────────────────────────────┘
+
+PRO STARTER Additions (+$99/year):
+┌─────────────────────────────────────────────────────────────┐
+│ ✓ Remove all MVP limits (∞ patients, appointments, etc.)   │
+│ ✓ Unlimited doctors & staff (up to 20 staff)               │
+│ ✓ Smart ID cards with barcode                              │
+│ ✓ Calendar view for appointments                           │
+│ ✓ Professional PDFs (no watermark)                         │
+│                                                             │
+│ NEW: IPD Module (4 beds)                                    │
+│    - Admission/discharge                                   │
+│    - Bed allocation                                        │
+│    - Daily billing                                         │
+│    Classes: AdmissionManager, BedAllocation                │
+│    Routes: /hms/v1/ipd/admissions, /hms/v1/beds            │
+│                                                             │
+│ NEW: Laboratory Module (10 test types)                     │
+│    - Test orders                                           │
+│    - Sample collection                                     │
+│    - Result entry                                          │
+│    - PDF reports                                           │
+│    Classes: TestManager, ReportGenerator                   │
+│    Routes: /hms/v1/lab/tests                               │
+│                                                             │
+│ ✓ 10 report types                                          │
+│ ✓ 6-month history access                                   │
+│ ✓ PDF export                                               │
+│ ✓ 90-day audit log                                         │
+│ ✓ Manual backup/restore                                    │
+└─────────────────────────────────────────────────────────────┘
+
+PRO BUSINESS Additions (+$199/year):
+┌─────────────────────────────────────────────────────────────┐
+│ ✓ Full IPD (8 beds) with package system                    │
+│ ✓ Complete Lab (unlimited tests, barcode labels)           │
+│                                                             │
+│ NEW: OT Module                                              │
+│    - Surgery scheduling                                     │
+│    - Pre/post operative notes                              │
+│    - OT charges                                            │
+│    Classes: OTScheduler, SurgeryManager                    │
+│    Routes: /hms/v1/ot/bookings                             │
+│                                                             │
+│ NEW: E-Prescription                                         │
+│    - Digital prescriptions                                 │
+│    - 500 medicine database                                 │
+│    - 10 templates                                          │
+│    - PDF generation                                        │
+│    Classes: EPrescriptionManager, TemplateManager          │
+│    Routes: /hms/v1/prescriptions                           │
+│                                                             │
+│ NEW: Pharmacy/Inventory                                     │
+│    - Medicine stock (500 items)                            │
+│    - Expiry tracking                                       │
+│    - IPD requisitions                                      │
+│    Classes: MedicineManager, StockManager                  │
+│    Routes: /hms/v1/pharmacy                                │
+│                                                             │
+│ NEW: HR & Payroll                                           │
+│    - Manual attendance                                     │
+│    - Leave management                                      │
+│    - Basic payroll                                         │
+│    Classes: EmployeeManager, PayrollProcessor              │
+│    Routes: /hms/v1/hr                                      │
+│                                                             │
+│ NEW: SMS/Email Notifications (500 SMS/month)               │
+│    Classes: SMSService, EmailService                       │
+│                                                             │
+│ ✓ Discount & refund management                             │
+│ ✓ 20+ reports with charts                                  │
+│ ✓ Data encryption                                          │
+│ ✓ Automated backups (30-day retention)                     │
+│ ✓ Custom roles                                             │
+│ ✓ 1-year audit log                                         │
+└─────────────────────────────────────────────────────────────┘
+
+ENTERPRISE Additions (+$399/year):
+┌─────────────────────────────────────────────────────────────┐
+│ NEW: Biometric Integration                                  │
+│    - ZKTeco, Realtime, eSSL devices                        │
+│    - Automated attendance                                  │
+│    Classes: BiometricIntegration                           │
+│                                                             │
+│ NEW: WhatsApp Integration                                   │
+│    - Send reports, prescriptions                           │
+│    Classes: WhatsAppService                                │
+│                                                             │
+│ NEW: Patient Portal                                         │
+│    - Online booking                                        │
+│    - View records                                          │
+│    - Download reports                                      │
+│                                                             │
+│ NEW: GDPR Tools                                             │
+│    - Consent management                                    │
+│    - Data anonymization                                    │
+│    - Right to erasure                                      │
+│    Classes: GDPRTools                                      │
+│                                                             │
+│ ✓ Custom report builder                                    │
+│ ✓ Cloud backup (S3, Dropbox, Google Drive)                 │
+│ ✓ Payment gateway (bKash, Nagad, SSL Commerce)             │
+│ ✓ 2FA                                                       │
+│ ✓ White-label option                                       │
+│ ✓ Unlimited audit log                                      │
+└─────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+5. REST API STRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+Base URL: /wp-json/hms/v1/
+
+API Versioning: v1 (current), v2 (future)
+
+Authentication: WordPress cookie/nonce + capability checks
+
+**Complete API Endpoints:**
+
+/patients [MVP]
+  GET    /                      # List patients (paginated)
+  POST   /                      # Create patient
+  GET    /{id}                  # Get patient
+  PUT    /{id}                  # Update patient
+  DELETE /{id}                  # Soft delete patient
+  GET    /search?q={query}      # Search patients
+  GET    /{id}/history           # Medical history [PRO-B]
+  POST   /{id}/history           # Add history record [PRO-B]
+
+/appointments [MVP]
+  GET    /                      # List appointments
+  POST   /                      # Create appointment
+  GET    /{id}                  # Get appointment
+  PUT    /{id}                  # Update appointment
+  DELETE /{id}                  # Cancel appointment
+  GET    /doctor/{id}/schedule  # Doctor's schedule
+  POST   /{id}/confirm          # Confirm appointment [PRO]
+
+/ipd [PRO-S]
+  /admissions
+    GET    /                    # List admissions
+    POST   /                    # Admit patient
+    GET    /{id}                # Get admission
+    PUT    /{id}                # Update admission
+    POST   /{id}/transfer       # Transfer bed
+    POST   /{id}/discharge      # Discharge patient
+  /beds
+    GET    /                    # List all beds
+    GET    /{id}                # Get bed details
+    PUT    /{id}                # Update bed status
+  /packages [PRO-B]
+    GET    /                    # List packages
+    POST   /                    # Create package
+    PUT    /{id}                # Update package
+
+/lab [PRO-S]
+  /tests
+    GET    /                    # List tests
+    POST   /                    # Order test
+    GET    /{id}                # Get test
+    PUT    /{id}                # Update test
+    POST   /{id}/collect        # Mark sample collected
+    POST   /{id}/results        # Enter results [PRO-B]
+    POST   /{id}/generate-report # Generate PDF
+    POST   /{id}/label          # Print barcode label [PRO-B]
+  /catalog
+    GET    /                    # List available tests
+    POST   /                    # Add test to catalog
+    PUT    /{id}                # Update test
+
+/ot [PRO-B]
+  /bookings
+    GET    /                    # List OT bookings
+    POST   /                    # Book surgery
+    GET    /{id}                # Get booking
+    PUT    /{id}                # Update booking
+    POST   /{id}/notes          # Add surgical notes
+    DELETE /{id}                # Cancel booking
+
+/prescriptions [PRO-B]
+  GET    /                      # List prescriptions
+  POST   /                      # Create prescription
+  GET    /{id}                  # Get prescription
+  POST   /{id}/generate-pdf     # Generate PDF
+  GET    /templates             # List templates
+  POST   /templates             # Create template
+
+/pharmacy [PRO-B]
+  /medicines
+    GET    /                    # List inventory
+    POST   /                    # Add medicine
+    GET    /{id}                # Get medicine
+    PUT    /{id}                # Update stock/details
+    GET    /expiring            # Get expiring medicines
+    GET    /low-stock           # Get low stock alerts
+  /requisitions
+    POST   /                    # Create IPD requisition
+    GET    /{id}                # Get requisition
+    POST   /{id}/dispense       # Mark as dispensed
+
+/billing [MVP]
+  /invoices
+    GET    /                    # List invoices
+    POST   /                    # Create invoice
+    GET    /{id}                # Get invoice
+    PUT    /{id}                # Update invoice
+    GET    /dues                # List due invoices [CRITICAL]
+    POST   /{id}/discount       # Apply discount [PRO-B]
+    POST   /{id}/refund         # Process refund [PRO-B]
+  /payments
+    GET    /                    # List payments
+    POST   /                    # Record payment
+    GET    /{id}                # Get payment
+    POST   /{id}/receipt        # Generate receipt
+
+/hr [PRO-B]
+  /staff
+    GET    /                    # List staff
+    POST   /                    # Add staff
+    GET    /{id}                # Get staff
+    PUT    /{id}                # Update staff
+  /attendance
+    GET    /                    # Get attendance records
+    POST   /                    # Mark attendance
+    GET    /{staff_id}/monthly  # Monthly attendance
+  /payroll
+    POST   /generate            # Generate payroll
+    GET    /{id}/salary-slip    # Get salary slip
+
+/reports [ALL - features vary by tier]
+  GET    /financial/daily       # Daily cash report [MVP]
+  GET    /financial/monthly     # Monthly revenue [PRO-S]
+  GET    /dues/summary          # Due summary [MVP]
+  GET    /patients/count        # Patient count [MVP]
+  GET    /doctors/performance   # Doctor report [PRO-B]
+  GET    /departments/revenue   # Department revenue [PRO-B]
+  POST   /custom/build          # Custom report [ENT]
+
+/settings [ALL]
+  GET    /hospital              # Hospital info
+  PUT    /hospital              # Update hospital info
+  GET    /license               # License status
+  POST   /license/activate      # Activate license
+  POST   /license/deactivate    # Deactivate license
+  POST   /backup/create         # Create backup [PRO-B]
+  POST   /backup/restore        # Restore backup [PRO-B]
+
+═══════════════════════════════════════════════════════════════════════════════
+6. REACT COMPONENT HIERARCHY
+═══════════════════════════════════════════════════════════════════════════════
+
+App (Root)
+├── ErrorBoundary
+│   └── Router
+│       ├── Layout
+│       │   ├── Header
+│       │   │   ├── UserMenu
+│       │   │   └── Notifications [PRO-B]
+│       │   │
+│       │   ├── Sidebar
+│       │   │   ├── Logo
+│       │   │   ├── NavigationMenu
+│       │   │   │   ├── MenuItem (Patients) [MVP]
+│       │   │   │   ├── MenuItem (OPD) [MVP]
+│       │   │   │   ├── MenuItem (IPD) [PRO-S] *locked icon if FREE
+│       │   │   │   ├── MenuItem (Lab) [PRO-S] *locked
+│       │   │   │   ├── MenuItem (OT) [PRO-B] *locked
+│       │   │   │   ├── MenuItem (Prescriptions) [PRO-B] *locked
+│       │   │   │   ├── MenuItem (Pharmacy) [PRO-B] *locked
+│       │   │   │   ├── MenuItem (Billing) [MVP]
+│       │   │   │   ├── MenuItem (HR) [PRO-B] *locked
+│       │   │   │   ├── MenuItem (Reports) [ALL]
+│       │   │   │   └── MenuItem (Settings) [ALL]
+│       │   │   └── UpgradeButton (if FREE/PRO-S/PRO-B)
+│       │   │
+│       │   └── MainContent
+│       │       └── Routes
+│       │           │
+│       │           ├── /dashboard [ALL]
+│       │           │   └── Dashboard
+│       │           │       ├── StatsCards (OPD, IPD, Lab, Dues)
+│       │           │       ├── QuickActions
+│       │           │       ├── Alerts (low stock, dues, etc.)
+│       │           │       └── RecentActivity [PRO-B]
+│       │           │
+│       │           ├── /patients [MVP]
+│       │           │   ├── PatientList
+│       │           │   │   ├── PatientSearch
+│       │           │   │   ├── PatientTable
+│       │           │   │   └── Pagination
+│       │           │   ├── PatientForm (Create/Edit)
+│       │           │   │   ├── BasicInfoForm
+│       │           │   │   ├── ContactForm
+│       │           │   │   ├── PhotoUpload [PRO-S]
+│       │           │   │   └── HistoryForm [PRO-B]
+│       │           │   └── PatientDetail
+│       │           │       ├── PatientCard
+│       │           │       ├── AppointmentHistory
+│       │           │       ├── BillingHistory
+│       │           │       └── MedicalHistory [PRO-B]
+│       │           │
+│       │           ├── /opd [MVP]
+│       │           │   ├── AppointmentList
+│       │           │   │   ├── FilterBar (date, doctor, status)
+│       │           │   │   ├── TableView [MVP]
+│       │           │   │   └── CalendarView [PRO-S]
+│       │           │   ├── AppointmentForm
+│       │           │   │   ├── PatientSelector
+│       │           │   │   ├── DoctorSelector
+│       │           │   │   ├── DateTimePicker
+│       │           │   │   └── RecurrenceOptions [PRO-B]
+│       │           │   └── DoctorSchedule
+│       │           │
+│       │           ├── /ipd [PRO-S] → UpgradePrompt if FREE
+│       │           │   ├── IPDDashboard
+│       │           │   │   ├── BedOccupancy
+│       │           │   │   └── CurrentAdmissions
+│       │           │   ├── AdmissionForm
+│       │           │   ├── BedAllocationView
+│       │           │   └── DischargeForm
+│       │           │
+│       │           ├── /laboratory [PRO-S] → UpgradePrompt if FREE
+│       │           │   ├── TestList
+│       │           │   │   ├── FilterBar (status, date)
+│       │           │   │   └── TestTable
+│       │           │   ├── TestOrderForm
+│       │           │   ├── ResultEntryForm [PRO-B]
+│       │           │   └── ReportViewer (PDF)
+│       │           │
+│       │           ├── /ot [PRO-B] → UpgradePrompt if not PRO-B
+│       │           │   ├── OTSchedule
+│       │           │   ├── BookingForm
+│       │           │   └── SurgeryNotesForm
+│       │           │
+│       │           ├── /prescriptions [PRO-B]
+│       │           │   ├── PrescriptionList
+│       │           │   ├── PrescriptionForm
+│       │           │   │   ├── MedicineSelector
+│       │           │   │   ├── InvestigationSelector
+│       │           │   │   └── TemplateSelector
+│       │           │   └── PrescriptionViewer (PDF)
+│       │           │
+│       │           ├── /pharmacy [PRO-B]
+│       │           │   ├── InventoryList
+│       │           │   ├── StockForm
+│       │           │   ├── ExpiryAlerts
+│       │           │   └── RequisitionForm
+│       │           │
+│       │           ├── /billing [MVP]
+│       │           │   ├── InvoiceList
+│       │           │   │   ├── FilterBar
+│       │           │   │   ├── DueInvoicesTab [CRITICAL]
+│       │           │   │   └── InvoiceTable
+│       │           │   ├── InvoiceForm
+│       │           │   │   ├── PatientSelector
+│       │           │   │   ├── LineItemsForm
+│       │           │   │   └── DiscountForm [PRO-B]
+│       │           │   ├── PaymentModal
+│       │           │   └── ReceiptViewer (PDF)
+│       │           │
+│       │           ├── /hr [PRO-B]
+│       │           │   ├── StaffList
+│       │           │   ├── StaffForm
+│       │           │   ├── AttendanceView
+│       │           │   └── PayrollGenerator
+│       │           │
+│       │           ├── /reports [ALL - varies by tier]
+│       │           │   ├── ReportSelector
+│       │           │   ├── DateRangePicker
+│       │           │   ├── ReportViewer
+│       │           │   │   ├── TableView
+│       │           │   │   ├── ChartView [PRO-B]
+│       │           │   │   └── ExportButtons
+│       │           │   └── CustomReportBuilder [ENT]
+│       │           │
+│       │           └── /settings [ALL]
+│       │               ├── HospitalSettings
+│       │               ├── LicenseSettings
+│       │               ├── BackupSettings [PRO-B]
+│       │               └── NotificationSettings [PRO-B]
+│       │
+│       └── Toastnotifications (global)
+
+Common Components (Used Everywhere):
+- Button (with variants: primary, secondary, danger)
+- Input (text, number, date, select, textarea)
+- Modal (with header, body, footer)
+- Table (sortable, filterable, paginated)
+- Card (for grouping content)
+- Loading (spinner states)
+- UpgradePrompt (for locked features)
+
+═══════════════════════════════════════════════════════════════════════════════
+7. STATE MANAGEMENT STRATEGY
+═══════════════════════════════════════════════════════════════════════════════
+
+**Approach: React hooks + Context (No Redux)**
+
+Why no Redux:
+- Application is not highly complex
+- Most data is server-driven (REST API)
+- React hooks + Context sufficient for our needs
+- Simpler developer experience
+
+**State Organization:**
+
+1. **Global State (React Context)**
+   ```javascript
+   // src/contexts/AppContext.js
+   const AppContext = createContext();
+   
+   - currentUser (WordPress user)
+   - license (tier, features, limits)
+   - permissions (capabilities)
+   - settings (hospital info, configurations)
+   ```
+
+2. **Local Component State (useState)**
+   - Form data
+   - UI state (modals, tabs, collapse)
+   - Filters (search, date ranges)
+   
+3. **Server State (Custom hooks with useEffect + useState)**
+   ```javascript
+   // src/hooks/usePatients.js
+   function usePatients(filters) {
+       const [patients, setPatients] = useState([]);
+       const [loading, setLoading] = useState(false);
+       const [error, setError] = useState(null);
+       
+       useEffect(() => {
+           fetchPatients(filters);
+       }, [filters]);
+       
+       return { patients, loading, error, refetch };
+   }
+   ```
+
+**Caching Strategy:**
+- Use React Query or SWR (optional) for advanced caching
+- Or manual caching with useRef for expensive queries
+
+═══════════════════════════════════════════════════════════════════════════════
+8. DEVELOPMENT WORKFLOW
+═══════════════════════════════════════════════════════════════════════════════
+
+**Phase 1: Setup (Week 1)**
+1. Initialize Git repository
+2. Setup Composer + package.json
+3. Create folder structure
+4. Setup build tools (@wordpress/scripts)
+5. Create database schema (all 18 tables)
+6. Implement LicenseManager (feature gating)
+
+**Phase 2: MVP Development (Weeks 2-6)**
+Focus order:
+1. Patients module → Backend + Frontend
+2. OPD module → Backend + Frontend
+3. Billing module → Backend + Frontend (CRITICAL)
+4. Basic reports
+5. Testing + Bug fixes
+
+**Phase 3: PRO Features (Weeks 7-16)**
+1. IPD module (PRO-S)
+2. Lab module (PRO-S)
+3. OT module (PRO-B)
+4. E-Prescription (PRO-B)
+5. Pharmacy (PRO-B)
+6. HR/Payroll (PRO-B)
+7. Advanced features (ENT)
+
+**Daily Workflow:**
+```bash
+# Start development
+cd wphelpzone-hms
+npm run start             # Watch mode for React
+composer install          # PHP dependencies
+
+# Make changes to React components
+# @wordpress/scripts auto-reloads
+
+# Test backend changes
+# WordPress admin auto-shows changes
+
+# Run tests
+composer test             # PHPUnit
+npm test                  # Jest
+npx playwright test       # E2E
+
+# Commit
+git add .
+git commit -m "Add patient registration form"
+git push
+```
+
+═══════════════════════════════════════════════════════════════════════════════
+9. DEPLOYMENT STRATEGY
+═══════════════════════════════════════════════════════════════════════════════
+
+**MVP/FREE Deployment (WordPress.org):**
+1. Build FREE version: `./scripts/build-tier.sh free`
+2. Test thoroughly
+3. Create WordPress.org assets (screenshots, banner)
+4. Submit to WordPress.org SVN
+5. Wait for approval (~2 weeks first time)
+
+**PRO Versions Deployment (Commercial Site):**
+1. Build all PRO tiers
+2. Upload to license server
+3. Update changelog
+4. Send email to customers (auto-update notification)
+
+**Update Mechanism:**
+- WordPress.org handles FREE updates automatically
+- PRO versions use WordPress built-in update system
+- License validation before downloading PRO updates
+
+═══════════════════════════════════════════════════════════════════════════════
+10. CRITICAL SUCCESS FACTORS
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ **Database designed completely from Day 1** - No schema changes
+✓ **License-based feature gating** - Single codebase for all tiers
+✓ **Due management works flawlessly** - This is THE critical feature
+✓ **Mobile responsive** - Hospitals use tablets/phones
+✓ **Fast performance** - Proper indexing, caching, query optimization
+✓ **Security hardened** - RBAC, digital signatures, audit logs
+✓ **Easy to use** - Intuitive UI, minimal training needed
+✓ **Reliable** - Automated testing, error handling, backups
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF COMPREHENSIVE ARCHITECTURAL PLAN
+═══════════════════════════════════════════════════════════════════════════════

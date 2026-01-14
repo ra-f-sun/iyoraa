@@ -1,0 +1,289 @@
+═══════════════════════════════════════════════════════════════════════════════
+    HOSPITAL MANAGEMENT SYSTEM (HMS) - MVP RELEASE CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+VERSION: 1.0 MVP (Minimum Viable Product)
+TARGET: 4-6 weeks development
+TIER: FREE TIER (Core Features)
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 1: FOUNDATION & SETUP (Week 1)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Project Setup
+  □ Initialize plugin structure
+  □ Setup Composer (PSR-4 autoloading)
+  □ Setup package.json (npm dependencies)
+  □ Configure @wordpress/scripts
+  □ Setup Git repository
+  □ Create .gitignore
+
+□ Database Schema
+  □ Create patients table
+  □ Create appointments table
+  □ Create invoices table
+  □ Create payments table
+  □ Create staff table (basic)
+  □ Create audit_log table
+  □ Create database migration system
+  □ Create database versioning
+
+□ Core Plugin Files
+  □ Main plugin file (wphelpzone-hms.php)
+  □ Activator class (database creation)
+  □ Deactivator class
+  □ Uninstall script
+  □ Main plugin bootstrap class
+
+□ Setup Wizard (FREE)
+  □ Step 1: Hospital information
+  □ Step 2: Admin user creation
+  □ Step 3: Basic doctor setup (up to 2 doctors)
+  □ Step 4: Basic test catalog (10 tests)
+  □ Step 5: Completion
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 2: PATIENT MANAGEMENT (Week 2)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Patient Module
+  □ PatientManager class (CRUD operations)
+  □ Generate unique patient ID (HOS-YYYY-####)
+  □ Patient validation
+  □ REST API endpoints:
+    □ POST /patients (create)
+    □ GET /patients (list - limit 100 patients in FREE)
+    □ GET /patients/{id} (single)
+    □ PUT /patients/{id} (update)
+    □ GET /patients/search (search)
+
+□ Frontend - Patient Components
+  □ Patient list page
+  □ Patient registration form
+  □ Patient search/filter
+  □ Patient detail view
+  □ Basic patient card (no barcode in FREE)
+
+□ Patient Features (FREE Tier)
+  □ Basic demographics (name, age, gender, phone)
+  □ Emergency contact
+  □ Medical history (text only, no attachments)
+  □ Search by name/phone/patient ID
+  □ Limit: 100 active patients
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 3: OPD MODULE (Week 2-3)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Appointment Module
+  □ AppointmentManager class
+  □ Appointment scheduling logic
+  □ Time slot management
+  □ REST API endpoints:
+    □ POST /appointments (create)
+    □ GET /appointments (list)
+    □ GET /appointments/{id} (single)
+    □ PUT /appointments/{id} (update/reschedule)
+    □ DELETE /appointments/{id} (cancel)
+
+□ Frontend - Appointment Components
+  □ Appointment booking form
+  □ Appointment list (table view only, no calendar in FREE)
+  □ Doctor schedule view (basic)
+  □ Appointment status management
+
+□ OPD Features (FREE Tier)
+  □ Manual appointment booking (no online booking)
+  □ Basic scheduling (no conflict detection)
+  □ Appointment status tracking
+  □ Up to 2 doctors
+  □ No SMS/Email reminders
+  □ Limit: 50 appointments/month
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 4: BILLING SYSTEM (Week 3-4) - CORE FEATURE
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Billing Module
+  □ InvoiceGenerator class
+  □ PaymentProcessor class
+  □ DuesManager class (CRITICAL)
+  □ REST API endpoints:
+    □ POST /invoices (create)
+    □ GET /invoices (list)
+    □ GET /invoices/{id} (single)
+    □ POST /payments (record payment)
+    □ GET /billing/dues (due list)
+
+□ Frontend - Billing Components
+  □ Invoice creation form
+  □ Invoice list
+  □ Payment recording modal
+  □ Due invoice list (CRITICAL)
+  □ Basic receipt generation
+
+□ Billing Features (FREE Tier)
+  □ Manual invoice creation
+  □ Cash payment only
+  □ Partial payment support
+  □ Due tracking (basic aging: 0-30, 30+ days)
+  □ Simple invoice PDF (text only, no logo)
+  □ Basic due invoice printing
+  □ Limit: 100 invoices/month
+  □ No discount management
+  □ No refund processing
+
+□ Digital Signature (FREE - Basic)
+  □ Track who created invoice
+  □ Track who received payment
+  □ Basic audit log (30 days retention)
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 5: BASIC REPORTS (Week 4)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Backend - Reports Module (Limited)
+  □ Basic financial report queries
+  □ Patient count reports
+  □ Due summary report
+
+□ Frontend - Reports Components
+  □ Report selector (3 report types only)
+  □ Date range filter
+  □ Basic table view (no charts)
+  □ Print report
+
+□ Reports (FREE Tier)
+  □ Daily cash report (today only)
+  □ Due summary report
+  □ Patient registration count
+  □ Export: Print only (no PDF/Excel)
+  □ No date range selection beyond current month
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 6: ROLE MANAGEMENT (Week 4)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Security & Roles
+  □ Create 3 basic roles:
+    □ HMS Admin (full access)
+    □ Receptionist (patient, appointment, billing)
+    □ Doctor (view patients, appointments only)
+  □ Basic capability system
+  □ Simple permission checks
+
+□ User Management (FREE Tier)
+  □ Up to 5 staff users
+  □ Basic role assignment
+  □ No custom role creation
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 7: UI/UX POLISH (Week 5)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Dashboard (FREE - Basic)
+  □ Today's stats (OPD count, total due)
+  □ Quick actions (New Patient, New Invoice)
+  □ No charts/graphs
+  □ No recent activity timeline
+
+□ Settings (FREE - Limited)
+  □ Hospital name, address, phone
+  □ Logo upload (watermarked on all PDFs in FREE)
+  □ Basic configurations only
+
+□ UI Components
+  □ Simple, clean design
+  □ Mobile responsive (basic)
+  □ Loading states
+  □ Error messages
+  □ Success notifications
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 8: TESTING & BUG FIXES (Week 5-6)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Testing
+  □ Manual testing of all FREE features
+  □ Patient registration flow
+  □ Appointment booking flow
+  □ Invoice creation & payment flow
+  □ Due tracking accuracy
+  □ Role permission testing
+
+□ Bug Fixes
+  □ Fix critical bugs
+  □ Fix UI issues
+  □ Cross-browser testing (Chrome, Firefox, Edge)
+  □ Mobile responsiveness fixes
+
+□ Documentation
+  □ Basic user guide (PDF)
+  □ Video tutorial (optional)
+  □ README file
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 9: DEPLOYMENT PREPARATION (Week 6)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ WordPress.org Preparation
+  □ Plugin header comments
+  □ readme.txt (WordPress format)
+  □ Screenshots (at least 4)
+  □ Plugin icon (256x256, 128x128)
+  □ Plugin banner (1544x500, 772x250)
+  □ License (GPL v2+)
+  □ Changelog
+
+□ Code Quality
+  □ WordPress Coding Standards (phpcs)
+  □ Security review
+  □ Remove debug code
+  □ Optimize assets (minify CSS/JS)
+
+□ Version Control
+  □ Tag version 1.0.0
+  □ Create release notes
+  □ SVN commit (for WordPress.org)
+
+═══════════════════════════════════════════════════════════════════════════════
+MVP FEATURE SUMMARY (FREE TIER)
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ Patient Management (limit: 100 active patients)
+✓ OPD Appointments (limit: 50/month, up to 2 doctors)
+✓ Billing & Invoicing (limit: 100/month)
+✓ Payment Tracking (cash only)
+✓ Due Management (basic aging)
+✓ Basic Reports (3 types, current month only)
+✓ 3 User Roles (Admin, Receptionist, Doctor)
+✓ Up to 5 staff users
+✓ Basic digital signatures
+✓ 30-day audit log
+✓ Simple PDF invoices (watermarked)
+
+✗ NO Laboratory Module
+✗ NO IPD Module
+✗ NO OT Module
+✗ NO Pharmacy Module
+✗ NO E-Prescription
+✗ NO SMS/Email Notifications
+✗ NO Biometric Integration
+✗ NO Advanced Reports
+✗ NO Calendar View
+✗ NO Barcode/Smart ID Cards
+✗ NO Backup System
+✗ NO WhatsApp Integration
+
+═══════════════════════════════════════════════════════════════════════════════
+UPGRADE PATH
+═══════════════════════════════════════════════════════════════════════════════
+
+To unlock additional features, users can upgrade to:
+→ PRO STARTER ($99/year) - Removes limits, adds IPD & Lab modules
+→ PRO BUSINESS ($199/year) - Adds OT, Pharmacy, E-Prescription, Notifications
+→ ENTERPRISE ($399/year) - All features + priority support + customization
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF MVP CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════

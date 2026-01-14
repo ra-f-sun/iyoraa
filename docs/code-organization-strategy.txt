@@ -1,0 +1,667 @@
+═══════════════════════════════════════════════════════════════════════════════
+    HMS - CODE ORGANIZATION & TIER MANAGEMENT STRATEGY
+═══════════════════════════════════════════════════════════════════════════════
+
+## 1. GITHUB REPOSITORY STRATEGY
+
+### RECOMMENDED APPROACH: Single Repository, Multi-Branch Strategy
+
+**Repository Structure:**
+```
+wphelpzone-hms (Single Private Repo)
+├── main (Full version - all features)
+├── release/free (WordPress.org distribution)
+├── release/pro-starter
+├── release/pro-business
+├── release/enterprise
+├── develop (active development)
+└── feature/* (feature branches)
+```
+
+**Why Single Repository?**
+✅ Easier code maintenance (fix once, cherry-pick to all tiers)
+✅ Shared core functionality
+✅ Unified version control
+✅ Single CI/CD pipeline
+✅ No code duplication
+✅ Easy to upgrade features across tiers
+
+❌ **Avoid Two Repositories** because:
+- Code duplication and sync issues
+- Bug fixes need to be applied twice
+- Merge conflicts when syncing
+- Harder to maintain
+
+---
+
+## 2. BRANCH STRATEGY
+
+### Main Branches
+
+**1. `main` branch (Full Version)**
+- Contains ALL features (FREE + PRO STARTER + PRO BUSINESS + ENTERPRISE)
+- Protected branch (requires PR approval)
+- Always production-ready
+- Tagged with version numbers (v2.0.0)
+- This is your source of truth
+
+**2. `develop` branch**
+- Active development happens here
+- All features are built here first
+- Merged to `main` when stable
+- CI/CD runs tests on every push
+
+**3. `release/free` branch (WordPress.org)**
+- Only FREE tier features
+- Branched from `main` at release time
+- Stripped down version
+- Contains upgrade prompts
+- Submitted to WordPress.org
+
+**4. `release/pro-starter` branch**
+- FREE + PRO STARTER features
+- Commercial distribution
+
+**5. `release/pro-business` branch**
+- FREE + PRO STARTER + PRO BUSINESS features
+
+**6. `release/enterprise` branch**
+- ALL features (same as `main` but with enterprise branding)
+
+---
+
+## 3. FEATURE DIFFERENTIATION ARCHITECTURE
+
+### Strategy: Keep ALL Code in Single Codebase, Use Feature Gates
+
+**Don't build 4 separate versions. Build ONE version with conditional loading.**
+
+### Implementation Approach
+
+#### A. License-Based Feature Gating (Recommended)
+
+**File: inc/Core/LicenseManager.php**
+
+```php
+namespace WPHelpZone\HMS\Core;
+
+class LicenseManager {
+    
+    private $tier = 'free'; // free, pro_starter, pro_business, enterprise
+    
+    public function __construct() {
+        $this->tier = $this->get_active_tier();
+    }
+    
+    /**
+     * Determine active tier based on license key
+     */
+    private function get_active_tier(): string {
+        // Check if license key exists
+        $license_key = get_option('hms_license_key');
+        
+        if (empty($license_key)) {
+            return 'free';
+        }
+        
+        // Validate license with remote server
+        $validation = $this->validate_license($license_key);
+        
+        if ($validation['valid']) {
+            return $validation['tier']; // pro_starter, pro_business, enterprise
+        }
+        
+        return 'free';
+    }
+    
+    /**
+     * Check if feature is available in current tier
+     */
+    public function has_feature(string $feature): bool {
+        $features = [
+            'free' => [
+                'patients_basic',
+                'opd_basic',
+                'billing_basic',
+                'reports_basic',
+            ],
+            'pro_starter' => [
+                'patients_unlimited',
+                'opd_unlimited',
+                'ipd_basic', // 4 beds
+                'lab_basic', // 10 tests
+                'smart_id_cards',
+                'calendar_view',
+            ],
+            'pro_business' => [
+                'ipd_full', // 8 beds
+                'lab_unlimited',
+                'ot_module',
+                'e_prescription',
+                'pharmacy',
+                'hr_payroll',
+                'sms_notifications',
+                'automated_backup',
+                'discounts_refunds',
+            ],
+            'enterprise' => [
+                'biometric',
+                'whatsapp',
+                'patient_portal',
+                'gdpr_tools',
+                'cloud_backup',
+                'payment_gateway',
+                'custom_reports',
+                '2fa',
+            ],
+        ];
+        
+        // Features cascade down (enterprise has all lower tier features)
+        switch ($this->tier) {
+            case 'enterprise':
+                if (in_array($feature, $features['enterprise'])) return true;
+            case 'pro_business':
+                if (in_array($feature, $features['pro_business'])) return true;
+            case 'pro_starter':
+                if (in_array($feature, $features['pro_starter'])) return true;
+            case 'free':
+                return in_array($feature, $features['free']);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get current tier
+     */
+    public function get_tier(): string {
+        return $this->tier;
+    }
+    
+    /**
+     * Check usage limits
+     */
+    public function check_limit(string $limit_type): array {
+        $limits = [
+            'free' => [
+                'patients' => 100,
+                'appointments_monthly' => 50,
+                'invoices_monthly' => 100,
+                'doctors' => 2,
+                'staff_users' => 5,
+            ],
+            'pro_starter' => [
+                'patients' => PHP_INT_MAX,
+                'appointments_monthly' => PHP_INT_MAX,
+                'invoices_monthly' => PHP_INT_MAX,
+                'doctors' => PHP_INT_MAX,
+                'staff_users' => 20,
+            ],
+            'pro_business' => [
+                'patients' => PHP_INT_MAX,
+                'appointments_monthly' => PHP_INT_MAX,
+                'invoices_monthly' => PHP_INT_MAX,
+                'doctors' => PHP_INT_MAX,
+                'staff_users' => PHP_INT_MAX,
+            ],
+            'enterprise' => [
+                'patients' => PHP_INT_MAX,
+                'appointments_monthly' => PHP_INT_MAX,
+                'invoices_monthly' => PHP_INT_MAX,
+                'doctors' => PHP_INT_MAX,
+                'staff_users' => PHP_INT_MAX,
+            ],
+        ];
+        
+        $tier_limits = $limits[$this->tier] ?? $limits['free'];
+        
+        return [
+            'limit' => $tier_limits[$limit_type] ?? 0,
+            'current' => $this->get_current_usage($limit_type),
+            'reached' => $this->is_limit_reached($limit_type),
+        ];
+    }
+}
+```
+
+#### B. Module Conditional Loading
+
+**File: inc/Core/Main.php**
+
+```php
+namespace WPHelpZone\HMS\Core;
+
+class Main {
+    
+    private $license_manager;
+    
+    public function __construct() {
+        $this->license_manager = new LicenseManager();
+        $this->load_modules();
+    }
+    
+    private function load_modules() {
+        // FREE modules - Always loaded
+        require_once HMS_PATH . 'inc/Patients/PatientManager.php';
+        require_once HMS_PATH . 'inc/OPD/AppointmentManager.php';
+        require_once HMS_PATH . 'inc/Billing/InvoiceGenerator.php';
+        require_once HMS_PATH . 'inc/Billing/PaymentProcessor.php';
+        require_once HMS_PATH . 'inc/Billing/DuesManager.php';
+        
+        // PRO STARTER modules - Conditional
+        if ($this->license_manager->has_feature('ipd_basic')) {
+            require_once HMS_PATH . 'inc/IPD/AdmissionManager.php';
+            require_once HMS_PATH . 'inc/IPD/BedAllocation.php';
+        }
+        
+        if ($this->license_manager->has_feature('lab_basic')) {
+            require_once HMS_PATH . 'inc/Laboratory/TestManager.php';
+            require_once HMS_PATH . 'inc/Laboratory/ResultEntry.php';
+        }
+        
+        // PRO BUSINESS modules - Conditional
+        if ($this->license_manager->has_feature('ot_module')) {
+            require_once HMS_PATH . 'inc/OT/OTScheduler.php';
+        }
+        
+        if ($this->license_manager->has_feature('e_prescription')) {
+            require_once HMS_PATH . 'inc/Prescription/EPrescriptionManager.php';
+        }
+        
+        if ($this->license_manager->has_feature('pharmacy')) {
+            require_once HMS_PATH . 'inc/Pharmacy/MedicineManager.php';
+            require_once HMS_PATH . 'inc/Pharmacy/StockManager.php';
+        }
+        
+        if ($this->license_manager->has_feature('hr_payroll')) {
+            require_once HMS_PATH . 'inc/HR/EmployeeManager.php';
+            require_once HMS_PATH . 'inc/HR/PayrollProcessor.php';
+        }
+        
+        // ENTERPRISE modules - Conditional
+        if ($this->license_manager->has_feature('biometric')) {
+            require_once HMS_PATH . 'inc/HR/BiometricIntegration.php';
+        }
+        
+        if ($this->license_manager->has_feature('patient_portal')) {
+            require_once HMS_PATH . 'inc/Portal/PatientPortal.php';
+        }
+    }
+}
+```
+
+#### C. REST API Feature Gating
+
+**File: inc/API/RestController.php**
+
+```php
+namespace WPHelpZone\HMS\API;
+
+abstract class RestController {
+    
+    protected $license_manager;
+    
+    public function __construct() {
+        $this->license_manager = new \WPHelpZone\HMS\Core\LicenseManager();
+    }
+    
+    /**
+     * Check if user has access to this endpoint
+     */
+    protected function check_feature_access(string $feature): bool {
+        if (!$this->license_manager->has_feature($feature)) {
+            return new \WP_Error(
+                'feature_locked',
+                'This feature requires ' . $this->get_required_tier($feature) . ' tier.',
+                ['status' => 403]
+            );
+        }
+        
+        return true;
+    }
+}
+
+// Example usage in IPDController
+class IPDController extends RestController {
+    
+    public function register_routes() {
+        register_rest_route('hms/v1', '/ipd/admissions', [
+            'methods' => 'POST',
+            'callback' => [$this, 'create_admission'],
+            'permission_callback' => function() {
+                // Check both WP permission AND license tier
+                return current_user_can('manage_ipd') 
+                    && $this->check_feature_access('ipd_basic');
+            }
+        ]);
+    }
+}
+```
+
+#### D. React Frontend Feature Gating
+
+**File: assets/src/utils/license.js**
+
+```javascript
+// Get license info from WordPress
+const licenseData = window.hmsData?.license || {
+    tier: 'free',
+    features: []
+};
+
+export const hasFeature = (feature) => {
+    return licenseData.features.includes(feature);
+};
+
+export const getTier = () => {
+    return licenseData.tier;
+};
+
+export const isLimitReached = (limitType) => {
+    return licenseData.limits?.[limitType]?.reached || false;
+};
+```
+
+**File: assets/src/App.js**
+
+```javascript
+import { hasFeature, getTier } from './utils/license';
+import { Routes, Route } from 'react-router-dom';
+
+function App() {
+    return (
+        <Routes>
+            {/* FREE tier routes - Always visible */}
+            <Route path="/patients" element={<Patients />} />
+            <Route path="/opd" element={<OPD />} />
+            <Route path="/billing" element={<Billing />} />
+            
+            {/* PRO STARTER routes - Conditional */}
+            {hasFeature('ipd_basic') && (
+                <Route path="/ipd" element={<IPD />} />
+            )}
+            
+            {hasFeature('lab_basic') && (
+                <Route path="/laboratory" element={<Laboratory />} />
+            )}
+            
+            {/* PRO BUSINESS routes - Conditional */}
+            {hasFeature('ot_module') && (
+                <Route path="/ot" element={<OT />} />
+            )}
+            
+            {hasFeature('e_prescription') && (
+                <Route path="/prescriptions" element={<Prescriptions />} />
+            )}
+            
+            {hasFeature('pharmacy') && (
+                <Route path="/pharmacy" element={<Pharmacy />} />
+            )}
+            
+            {/* ENTERPRISE routes - Conditional */}
+            {hasFeature('patient_portal') && (
+                <Route path="/portal" element={<PatientPortal />} />
+            )}
+        </Routes>
+    );
+}
+```
+
+**Upgrade Prompts for Locked Features:**
+
+```javascript
+// Component: UpgradePrompt.js
+const UpgradePrompt = ({ feature, requiredTier }) => {
+    return (
+        <div className="upgrade-prompt">
+            <h3>🔒 This feature requires {requiredTier}</h3>
+            <p>Unlock {feature} and more with an upgrade.</p>
+            <a href="/upgrade" className="button-primary">
+                Upgrade Now
+            </a>
+        </div>
+    );
+};
+
+// Usage in IPD page
+const IPD = () => {
+    if (!hasFeature('ipd_basic')) {
+        return <UpgradePrompt 
+            feature="IPD Management" 
+            requiredTier="PRO STARTER" 
+        />;
+    }
+    
+    return <IPDManagement />;
+};
+```
+
+---
+
+## 4. BUILD & RELEASE PROCESS
+
+### Build Script for Different Tiers
+
+**File: scripts/build-tier.sh**
+
+```bash
+#!/bin/bash
+
+TIER=$1 # free, pro-starter, pro-business, enterprise
+
+echo "Building HMS for tier: $TIER"
+
+# Build React assets
+npm run build
+
+# Copy files to dist
+rm -rf dist/$TIER
+mkdir -p dist/$TIER
+
+# Copy all files
+rsync -av --exclude='node_modules' --exclude='dist' --exclude='.git' . dist/$TIER/
+
+# Add tier-specific config
+echo "<?php define('HMS_TIER', '$TIER'); ?>" > dist/$TIER/tier-config.php
+
+# For FREE tier - Add WordPress.org specific files
+if [ "$TIER" == "free" ]; then
+    cp wordpress-org/readme.txt dist/$TIER/
+    cp wordpress-org/assets/* dist/$TIER/assets/
+    
+    # Remove PRO files (optional - or keep but gate with license checks)
+    # This keeps codebase unified
+fi
+
+# Create zip
+cd dist/$TIER
+zip -r ../wphelpzone-hms-$TIER.zip .
+cd ../..
+
+echo "Build complete: dist/wphelpzone-hms-$TIER.zip"
+```
+
+**Usage:**
+```bash
+# Build FREE version for WordPress.org
+./scripts/build-tier.sh free
+
+# Build PRO versions for commercial site
+./scripts/build-tier.sh pro-starter
+./scripts/build-tier.sh pro-business
+./scripts/build-tier.sh enterprise
+```
+
+### CI/CD Pipeline (GitHub Actions)
+
+**File: .github/workflows/build-release.yml**
+
+```yaml
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tier: [free, pro-starter, pro-business, enterprise]
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: |
+          npm install
+          composer install --no-dev
+      
+      - name: Build assets
+        run: npm run build
+      
+      - name: Build ${{ matrix.tier }} tier
+        run: ./scripts/build-tier.sh ${{ matrix.tier }}
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wphelpzone-hms-${{ matrix.tier }}
+          path: dist/wphelpzone-hms-${{ matrix.tier }}.zip
+```
+
+---
+
+## 5. LICENSE KEY VALIDATION SYSTEM
+
+### Remote License Server
+
+You'll need a separate license server (WordPress site or custom API):
+
+**License Server API Endpoints:**
+```
+POST   /api/validate-license
+POST   /api/activate-license
+POST   /api/deactivate-license
+GET    /api/check-updates
+```
+
+**Plugin → License Server Communication:**
+
+```php
+// File: inc/Core/LicenseManager.php
+
+private function validate_license(string $license_key): array {
+    $api_url = 'https://license.wphelpzone.com/api/validate-license';
+    
+    $response = wp_remote_post($api_url, [
+        'body' => [
+            'license_key' => $license_key,
+            'domain' => home_url(),
+            'plugin_version' => HMS_VERSION,
+        ],
+        'timeout' => 15,
+    ]);
+    
+    if (is_wp_error($response)) {
+        // If server unreachable, use cached validation (7-day grace)
+        return $this->get_cached_validation();
+    }
+    
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    
+    // Cache validation for 24 hours
+    set_transient('hms_license_validation', $body, DAY_IN_SECONDS);
+    
+    return [
+        'valid' => $body['valid'] ?? false,
+        'tier' => $body['tier'] ?? 'free',
+        'expires' => $body['expires'] ?? null,
+    ];
+}
+```
+
+---
+
+## 6. RECOMMENDED WORKFLOW
+
+### Development Workflow
+
+1. **Develop Features in `develop` branch**
+   ```bash
+   git checkout develop
+   git checkout -b feature/ipd-package-system
+   # ... develop feature ...
+   git commit -am "Add IPD package system"
+   git push origin feature/ipd-package-system
+   # Create PR to develop
+   ```
+
+2. **Merge to `main` when ready for release**
+   ```bash
+   git checkout main
+   git merge develop
+   git tag v2.0.0
+   git push origin main --tags
+   ```
+
+3. **Build all tiers automatically (GitHub Actions)**
+   - Triggered by tag push
+   - Builds 4 versions automatically
+
+4. **Distribute:**
+   - FREE → WordPress.org (manual submission)
+   - PRO tiers → Commercial site download area
+
+### Feature Development Best Practice
+
+**Always develop with ALL features enabled:**
+- Write code once in `develop` branch
+- Use feature flags everywhere
+- Test with different tier settings
+- Don't create tier-specific code paths (use feature flags instead)
+
+---
+
+## 7. DEPLOYMENT CHECKLIST
+
+**For WordPress.org (FREE tier):**
+- [ ] Build FREE version: `./scripts/build-tier.sh free`
+- [ ] Test with license tier set to 'free'
+- [ ] Verify upgrade prompts appear
+- [ ] Test limit enforcement (100 patients, 50 appointments)
+- [ ] Submit to WordPress.org SVN
+
+**For Commercial Site (PRO tiers):**
+- [ ] Build all PRO versions
+- [ ] Upload to license server
+- [ ] Update version in license database
+- [ ] Test license activation
+- [ ] Test auto-updates
+- [ ] Send email to existing customers
+
+---
+
+## 8. SUMMARY
+
+✅ **Use Single Repository** with multiple release branches
+✅ **Keep ALL code in one codebase** - use feature gates, not separate versions
+✅ **License-based feature unlocking** - validate tier, conditionally load modules
+✅ **Automated builds** - CI/CD creates all 4 tier versions from single source
+✅ **Unified maintenance** - fix bugs once, deploy to all tiers
+
+This approach gives you:
+- Clean, maintainable codebase
+- Easy upgrades (just change license key)
+- No code duplication
+- Simple testing (test once with different tier configs)
+- Professional license management
+
+═══════════════════════════════════════════════════════════════════════════════

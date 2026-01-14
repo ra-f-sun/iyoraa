@@ -1,0 +1,1008 @@
+═══════════════════════════════════════════════════════════════════════════════
+    HMS - COMPLETE DATABASE ARCHITECTURE & OPTIMIZATION STRATEGY
+═══════════════════════════════════════════════════════════════════════════════
+
+## PHILOSOPHY: Design Once, Use Gradually
+
+✓ Create ALL tables on Day 1 (plugin activation)
+✓ Use only MVP tables initially
+✓ PRO tables exist but remain empty until licensed
+✓ No schema changes between tiers - only usage changes
+✓ Forward-compatible, backward-stable
+
+═══════════════════════════════════════════════════════════════════════════════
+1. DATABASE VERSIONING SYSTEM
+═══════════════════════════════════════════════════════════════════════════════
+
+**Version Tracking Table:**
+
+```sql
+CREATE TABLE {prefix}_hms_db_version (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    version VARCHAR(10) NOT NULL,
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    description TEXT,
+    INDEX idx_version (version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+**Initial Version: 1.0.0 (MVP)**
+**Target Version: 2.0.0 (Full)**
+
+All tables created at version 1.0.0, even if not used until later.
+
+═══════════════════════════════════════════════════════════════════════════════
+2. COMPLETE TABLE STRUCTURE (ALL TIERS)
+═══════════════════════════════════════════════════════════════════════════════
+
+Legend:
+[MVP] = Used from Day 1 (FREE tier)
+[PRO-S] = Used when PRO STARTER activated
+[PRO-B] = Used when PRO BUSINESS activated
+[ENT] = Used when ENTERPRISE activated
+[ALL] = Used by all tiers
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 1: PATIENTS [MVP] ✓ CRITICAL
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_patients (
+    -- Primary Key
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Unique Identifiers
+    patient_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'HOS-2026-0001',
+    barcode VARCHAR(50) UNIQUE COMMENT 'For smart ID cards [PRO-S]',
+    
+    -- Basic Demographics [MVP]
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    gender ENUM('male', 'female', 'other') NOT NULL,
+    blood_group VARCHAR(10),
+    
+    -- Contact Information [MVP]
+    phone VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    address TEXT,
+    emergency_contact VARCHAR(20),
+    emergency_name VARCHAR(100),
+    
+    -- Metadata
+    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    photo_url VARCHAR(255) COMMENT 'Patient photo [PRO-S]',
+    notes TEXT,
+    status ENUM('active', 'inactive', 'anonymized') DEFAULT 'active',
+    
+    -- Audit [ALL]
+    created_by BIGINT UNSIGNED COMMENT 'Staff ID who registered',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    -- Indexes for Performance
+    INDEX idx_patient_id (patient_id),
+    INDEX idx_phone (phone),
+    INDEX idx_status (status),
+    INDEX idx_registration_date (registration_date),
+    INDEX idx_created_by (created_by),
+    FULLTEXT idx_name (first_name, last_name)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Core patient records - Used from MVP';
+
+-- Estimated rows at scale: 10,000 - 50,000
+-- Critical indexes: patient_id (unique lookups), phone (search), name (FULLTEXT)
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 2: PATIENT HISTORY [PRO-B]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_patient_history (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id BIGINT UNSIGNED NOT NULL,
+    record_type ENUM('diagnosis', 'allergy', 'surgery', 'medication', 'note') NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    recorded_date DATE,
+    recorded_by BIGINT UNSIGNED COMMENT 'Doctor/Staff ID',
+    attachments JSON COMMENT 'Array of file URLs [PRO-B]',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE CASCADE,
+    INDEX idx_patient_type (patient_id, record_type),
+    INDEX idx_recorded_date (recorded_date),
+    INDEX idx_recorded_by (recorded_by)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Medical history with attachments - PRO-B feature';
+
+-- Estimated rows: 50,000 - 200,000 (avg 5-10 records per patient)
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 3: PATIENT CONSENTS [ENT] (GDPR Compliance)
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_patient_consents (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id BIGINT UNSIGNED NOT NULL,
+    consent_type ENUM('data_storage', 'data_processing', 'communication', 'research') NOT NULL,
+    consent_given BOOLEAN DEFAULT FALSE,
+    consent_date DATETIME,
+    consent_withdrawn_date DATETIME,
+    ip_address VARCHAR(45),
+    consent_document_url VARCHAR(255) COMMENT 'Signed consent form',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE CASCADE,
+    INDEX idx_patient_consent (patient_id, consent_type),
+    UNIQUE KEY unique_patient_consent (patient_id, consent_type)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='GDPR consent management - ENTERPRISE feature';
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 4: APPOINTMENTS [MVP] ✓ CRITICAL
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_appointments (
+    -- Primary Key
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    
+    -- Unique Identifier
+    appointment_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'APT-2026-0001',
+    
+    -- Core Fields [MVP]
+    patient_id BIGINT UNSIGNED NOT NULL,
+    doctor_id BIGINT UNSIGNED NOT NULL,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
+    duration INT DEFAULT 15 COMMENT 'Minutes',
+    
+    -- Status [MVP]
+    status ENUM('scheduled', 'confirmed', 'completed', 'cancelled', 'no_show') DEFAULT 'scheduled',
+    reason VARCHAR(255),
+    notes TEXT,
+    
+    -- Billing [MVP]
+    consultation_fee DECIMAL(10, 2),
+    payment_status ENUM('pending', 'paid', 'partial') DEFAULT 'pending',
+    
+    -- Recurring Appointments [PRO-B]
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_pattern VARCHAR(50) COMMENT 'weekly, monthly, etc [PRO-B]',
+    recurrence_parent_id BIGINT UNSIGNED COMMENT 'If this is recurring instance',
+    
+    -- Audit [ALL]
+    created_by BIGINT UNSIGNED COMMENT 'Who booked',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    -- Foreign Keys
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    
+    -- Performance Indexes
+    INDEX idx_appointment_id (appointment_id),
+    INDEX idx_doctor_date (doctor_id, appointment_date),
+    INDEX idx_patient (patient_id),
+    INDEX idx_status (status),
+    INDEX idx_payment_status (payment_status),
+    INDEX idx_date_time (appointment_date, appointment_time)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='OPD appointments - MVP core feature';
+
+-- Estimated rows: 50,000 - 500,000 per year
+-- Critical query: doctor_date index for schedule view
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 5: BEDS/CABINS [PRO-S]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_beds (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    bed_number VARCHAR(20) UNIQUE NOT NULL COMMENT 'C1, C2, C3, W1-W5',
+    bed_type ENUM('cabin', 'ward') NOT NULL,
+    bed_name VARCHAR(100) COMMENT 'VIP Cabin 1, General Ward Bed 3',
+    floor VARCHAR(20),
+    daily_rate DECIMAL(10, 2) NOT NULL,
+    status ENUM('available', 'occupied', 'maintenance', 'reserved') DEFAULT 'available',
+    features TEXT COMMENT 'AC, TV, Private bathroom',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_bed_number (bed_number),
+    INDEX idx_type_status (bed_type, status)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Bed/Cabin inventory - PRO-S feature';
+
+-- Estimated rows: 8-20 (small, mostly static)
+-- Pre-populated during setup wizard
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 6: IPD ADMISSIONS [PRO-S]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_ipd_admissions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admission_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'IPD-2026-0001',
+    patient_id BIGINT UNSIGNED NOT NULL,
+    admission_date DATETIME NOT NULL,
+    discharge_date DATETIME,
+    bed_id BIGINT UNSIGNED NOT NULL,
+    package_id BIGINT UNSIGNED COMMENT 'NULL if pay-as-go [PRO-B]',
+    admission_type ENUM('emergency', 'planned') DEFAULT 'planned',
+    admitting_doctor_id BIGINT UNSIGNED NOT NULL,
+    diagnosis TEXT,
+    status ENUM('admitted', 'discharged', 'transferred') DEFAULT 'admitted',
+    
+    -- Billing
+    total_amount DECIMAL(10, 2) DEFAULT 0,
+    paid_amount DECIMAL(10, 2) DEFAULT 0,
+    due_amount DECIMAL(10, 2) DEFAULT 0,
+    
+    discharge_summary TEXT COMMENT 'Detailed discharge notes [PRO-B]',
+    
+    -- Audit
+    admitted_by BIGINT UNSIGNED,
+    discharged_by BIGINT UNSIGNED,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    FOREIGN KEY (bed_id) REFERENCES {prefix}_hms_beds(id),
+    
+    INDEX idx_admission_id (admission_id),
+    INDEX idx_patient_status (patient_id, status),
+    INDEX idx_bed_id (bed_id),
+    INDEX idx_admission_date (admission_date),
+    INDEX idx_status (status)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='IPD admissions - PRO-S feature';
+
+-- Estimated rows: 2,000 - 10,000 per year
+-- Critical: bed_id for allocation, status for current admissions
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 7: IPD PACKAGES [PRO-B]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_ipd_packages (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    package_name VARCHAR(200) NOT NULL,
+    duration_days INT NOT NULL,
+    package_price DECIMAL(10, 2) NOT NULL,
+    included_services JSON COMMENT 'Array of included services',
+    excluded_services JSON COMMENT 'Array of excluded services',
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_active (is_active)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='IPD package system - PRO-B feature';
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 8: LABORATORY TESTS [PRO-S]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_lab_tests (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    test_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'LAB-2026-0001',
+    patient_id BIGINT UNSIGNED NOT NULL,
+    test_category ENUM('blood', 'urine', 'stool', 'imaging', 'other') NOT NULL,
+    test_name VARCHAR(200) NOT NULL COMMENT 'CBC, TSH, LFT, USG',
+    test_code VARCHAR(50) COMMENT 'Internal code',
+    ordered_by BIGINT UNSIGNED COMMENT 'Doctor ID',
+    ordered_date DATETIME NOT NULL,
+    
+    -- Sample Collection
+    sample_collected BOOLEAN DEFAULT FALSE,
+    collection_date DATETIME,
+    collected_by BIGINT UNSIGNED,
+    
+    -- Results [PRO-B]
+    result_entered BOOLEAN DEFAULT FALSE,
+    result_date DATETIME,
+    result_entered_by BIGINT UNSIGNED,
+    result_data JSON COMMENT 'Test results with parameters',
+    report_url VARCHAR(255) COMMENT 'PDF report',
+    
+    -- Status
+    status ENUM('ordered', 'sample_collected', 'in_progress', 'completed', 'cancelled') DEFAULT 'ordered',
+    
+    -- Billing
+    test_fee DECIMAL(10, 2) NOT NULL,
+    payment_status ENUM('pending', 'paid') DEFAULT 'pending',
+    notes TEXT,
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    
+    INDEX idx_test_id (test_id),
+    INDEX idx_patient_status (patient_id, status),
+    INDEX idx_test_category (test_category),
+    INDEX idx_ordered_date (ordered_date),
+    INDEX idx_status (status)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Laboratory test orders - PRO-S feature';
+
+-- Estimated rows: 20,000 - 100,000 per year
+-- High-frequency table, needs good indexing
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 9: LAB TEST CATALOG [PRO-S]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_lab_catalog (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    test_code VARCHAR(50) UNIQUE NOT NULL,
+    test_name VARCHAR(200) NOT NULL,
+    test_category ENUM('blood', 'urine', 'stool', 'imaging', 'other') NOT NULL,
+    normal_range VARCHAR(200) COMMENT 'Reference ranges',
+    parameters JSON COMMENT 'Test parameters [PRO-B]',
+    price DECIMAL(10, 2) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_category_active (test_category, is_active),
+    INDEX idx_test_code (test_code),
+    FULLTEXT idx_test_name (test_name)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Lab test master catalog - PRO-S';
+
+-- Estimated rows: 10-500 (mostly static reference data)
+-- Populated during setup
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 10: OT BOOKINGS [PRO-B]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_ot_bookings (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    booking_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'OT-2026-0001',
+    patient_id BIGINT UNSIGNED NOT NULL,
+    surgery_date DATE NOT NULL,
+    surgery_time TIME NOT NULL,
+    estimated_duration INT COMMENT 'Minutes',
+    surgery_type VARCHAR(200) NOT NULL,
+    surgeon_id BIGINT UNSIGNED NOT NULL,
+    anesthetist_id BIGINT UNSIGNED,
+    assistant_ids JSON COMMENT 'Array of doctor IDs',
+    
+    -- Clinical Notes
+    pre_operative_notes TEXT,
+    surgery_notes TEXT,
+    post_operative_notes TEXT,
+    complications TEXT,
+    
+    status ENUM('scheduled', 'in_progress', 'completed', 'cancelled') DEFAULT 'scheduled',
+    
+    -- Billing
+    surgery_fee DECIMAL(10, 2),
+    anesthesia_fee DECIMAL(10, 2),
+    ot_charges DECIMAL(10, 2),
+    total_charges DECIMAL(10, 2),
+    payment_status ENUM('pending', 'paid', 'partial') DEFAULT 'pending',
+    
+    booked_by BIGINT UNSIGNED,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    
+    INDEX idx_booking_id (booking_id),
+    INDEX idx_surgery_date (surgery_date),
+    INDEX idx_surgeon_id (surgeon_id),
+    INDEX idx_status (status)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='OT scheduling - PRO-B feature';
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 11: PRESCRIPTIONS [PRO-B]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_prescriptions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    prescription_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'RX-2026-0001',
+    patient_id BIGINT UNSIGNED NOT NULL,
+    doctor_id BIGINT UNSIGNED NOT NULL,
+    visit_date DATE NOT NULL,
+    visit_type ENUM('opd', 'ipd', 'emergency') NOT NULL,
+    
+    -- Clinical Data
+    chief_complaint TEXT,
+    diagnosis TEXT,
+    medications JSON COMMENT 'Array of medicines with dosage',
+    investigations JSON COMMENT 'Tests ordered',
+    advice TEXT,
+    follow_up_date DATE,
+    
+    template_used VARCHAR(100) COMMENT 'Template name if used',
+    generated_pdf VARCHAR(255) COMMENT 'PDF file path',
+    status ENUM('draft', 'issued', 'cancelled') DEFAULT 'issued',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    
+    INDEX idx_prescription_id (prescription_id),
+    INDEX idx_patient_doctor (patient_id, doctor_id),
+    INDEX idx_visit_date (visit_date),
+    INDEX idx_doctor (doctor_id)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='E-Prescriptions - PRO-B feature';
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 12: INVOICES [MVP] ✓ CRITICAL
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_invoices (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'INV-2026-0001',
+    patient_id BIGINT UNSIGNED NOT NULL,
+    invoice_date DATE NOT NULL,
+    invoice_type ENUM('opd', 'ipd', 'lab', 'ot', 'pharmacy', 'other') NOT NULL,
+    reference_id BIGINT UNSIGNED COMMENT 'Related appointment/admission/test ID',
+    
+    -- Line Items
+    items JSON NOT NULL COMMENT 'Array of line items with details',
+    
+    -- Amounts
+    subtotal DECIMAL(10, 2) NOT NULL,
+    discount_percentage DECIMAL(5, 2) DEFAULT 0 COMMENT '[PRO-B]',
+    discount_amount DECIMAL(10, 2) DEFAULT 0,
+    tax_amount DECIMAL(10, 2) DEFAULT 0,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    paid_amount DECIMAL(10, 2) DEFAULT 0,
+    due_amount DECIMAL(10, 2) NOT NULL,
+    
+    -- Status
+    payment_status ENUM('unpaid', 'partial', 'paid') DEFAULT 'unpaid',
+    due_date DATE,
+    notes TEXT,
+    
+    -- Audit [ALL]
+    issued_by BIGINT UNSIGNED NOT NULL COMMENT 'Staff who created invoice',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    
+    INDEX idx_invoice_id (invoice_id),
+    INDEX idx_patient_status (patient_id, payment_status),
+    INDEX idx_invoice_type (invoice_type),
+    INDEX idx_due_date (due_date),
+    INDEX idx_issued_by (issued_by),
+    INDEX idx_invoice_date (invoice_date)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Invoices - MVP core feature';
+
+-- Estimated rows: 30,000 - 300,000 per year
+-- Very high frequency, critical for due tracking
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 13: PAYMENTS [MVP] ✓ CRITICAL
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_payments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    payment_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'PAY-2026-0001',
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    patient_id BIGINT UNSIGNED NOT NULL,
+    payment_date DATETIME NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_banking', 'bkash', 'nagad', 'other') NOT NULL,
+    transaction_reference VARCHAR(100) COMMENT 'Bank/gateway reference',
+    receipt_number VARCHAR(50),
+    notes TEXT,
+    
+    -- Audit
+    received_by BIGINT UNSIGNED NOT NULL COMMENT 'Staff who received payment',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (invoice_id) REFERENCES {prefix}_hms_invoices(id) ON DELETE RESTRICT,
+    FOREIGN KEY (patient_id) REFERENCES {prefix}_hms_patients(id) ON DELETE RESTRICT,
+    
+    INDEX idx_payment_id (payment_id),
+    INDEX idx_invoice_id (invoice_id),
+    INDEX idx_payment_date (payment_date),
+    INDEX idx_received_by (received_by),
+    INDEX idx_patient (patient_id)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Payments - MVP core feature';
+
+-- Estimated rows: 30,000 - 300,000 per year
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 14: MEDICINES [PRO-B]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_medicines (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    medicine_code VARCHAR(50) UNIQUE,
+    medicine_name VARCHAR(200) NOT NULL,
+    generic_name VARCHAR(200),
+    category VARCHAR(100) COMMENT 'Antibiotic, Painkiller, etc',
+    manufacturer VARCHAR(200),
+    unit_type VARCHAR(50) COMMENT 'Tablet, Capsule, Syrup',
+    strength VARCHAR(50) COMMENT '500mg, 10ml',
+    purchase_price DECIMAL(10, 2),
+    current_stock INT DEFAULT 0,
+    minimum_stock INT DEFAULT 10,
+    expiry_date DATE,
+    storage_location VARCHAR(100),
+    status ENUM('active', 'discontinued', 'out_of_stock') DEFAULT 'active',
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_medicine_code (medicine_code),
+    INDEX idx_status (status),
+    INDEX idx_expiry_date (expiry_date),
+    INDEX idx_stock_alert (current_stock, minimum_stock),
+    FULLTEXT idx_name (medicine_name, generic_name)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Medicine inventory - PRO-B feature';
+
+-- Estimated rows: 500 - 2,000
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 15: STAFF [ALL] (Basic in FREE, Full in PRO-B)
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_staff (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    staff_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'EMP-2026-0001',
+    wp_user_id BIGINT UNSIGNED COMMENT 'Link to WordPress user',
+    staff_type ENUM('doctor', 'nurse', 'receptionist', 'lab_assistant', 'manager', 'guard', 'other') NOT NULL,
+    
+    -- Basic Info [MVP for doctors]
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    specialization VARCHAR(200) COMMENT 'For doctors',
+    qualification VARCHAR(200),
+    phone VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    address TEXT,
+    date_of_birth DATE,
+    
+    -- Employment [PRO-B]
+    joining_date DATE NOT NULL,
+    salary DECIMAL(10, 2) COMMENT '[PRO-B]',
+    duty_schedule JSON COMMENT 'Working hours/days [PRO-B]',
+    biometric_id VARCHAR(50) COMMENT 'For attendance [ENT]',
+    
+    status ENUM('active', 'on_leave', 'resigned', 'terminated') DEFAULT 'active',
+    photo_url VARCHAR(255),
+    documents JSON COMMENT 'Certificate URLs',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_staff_id (staff_id),
+    INDEX idx_wp_user_id (wp_user_id),
+    INDEX idx_staff_type (staff_type),
+    INDEX idx_status (status),
+    INDEX idx_biometric_id (biometric_id)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Staff/Employees - Basic in FREE (doctors only), Full in PRO-B';
+
+-- Estimated rows: 5 - 50
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 16: ATTENDANCE [PRO-B]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_attendance (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    staff_id BIGINT UNSIGNED NOT NULL,
+    attendance_date DATE NOT NULL,
+    check_in TIME,
+    check_out TIME,
+    total_hours DECIMAL(5, 2),
+    status ENUM('present', 'absent', 'half_day', 'on_leave') NOT NULL,
+    biometric_verified BOOLEAN DEFAULT FALSE COMMENT '[ENT]',
+    notes TEXT,
+    marked_by BIGINT UNSIGNED COMMENT 'Manager who marked',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (staff_id) REFERENCES {prefix}_hms_staff(id) ON DELETE CASCADE,
+    
+    UNIQUE KEY unique_staff_date (staff_id, attendance_date),
+    INDEX idx_attendance_date (attendance_date),
+    INDEX idx_status (status),
+    INDEX idx_staff_date (staff_id, attendance_date)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Staff attendance - PRO-B feature';
+
+-- Estimated rows: 10,000 - 100,000 per year
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 17: AUDIT LOG [ALL] ✓ CRITICAL
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_audit_log (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL COMMENT 'Staff ID',
+    action VARCHAR(100) NOT NULL COMMENT 'invoice_created, payment_received',
+    entity_type VARCHAR(50) NOT NULL COMMENT 'invoice, payment, prescription',
+    entity_id BIGINT UNSIGNED,
+    old_data JSON COMMENT 'Before state',
+    new_data JSON COMMENT 'After state',
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_user_id (user_id),
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_action (action),
+    INDEX idx_created_at (created_at)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Audit trail - All tiers (retention varies by tier)';
+
+-- Estimated rows: 100,000 - 1,000,000 per year
+-- Auto-archive after retention period (30d FREE, 90d PRO-S, 1yr PRO-B, unlimited ENT)
+
+───────────────────────────────────────────────────────────────────────────────
+TABLE 18: ERROR LOG [ALL]
+───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE {prefix}_hms_error_log (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    level ENUM('info', 'warning', 'error', 'critical') NOT NULL,
+    message TEXT NOT NULL,
+    context JSON,
+    user_id BIGINT UNSIGNED,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    url VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_level (level),
+    INDEX idx_created_at (created_at)
+    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Error logging - All tiers';
+
+═══════════════════════════════════════════════════════════════════════════════
+3. TABLE USAGE BY TIER
+═══════════════════════════════════════════════════════════════════════════════
+
+FREE (MVP):
+✓ patients (limit 100)
+✓ appointments (limit 50/month)
+✓ invoices (limit 100/month)
+✓ payments
+✓ staff (limit 5, basic)
+✓ audit_log (30-day retention)
+✓ error_log
+✓ db_version
+
+PRO STARTER (+):
+✓ patient_history (basic)
+✓ beds
+✓ ipd_admissions (4 beds)
+✓ lab_tests (10 test types)
+✓ lab_catalog
+✓ audit_log (90-day retention)
+
+PRO BUSINESS (+):
+✓ ipd_packages
+✓ ot_bookings
+✓ prescriptions
+✓ medicines
+✓ attendance
+✓ patient_history (with attachments)
+✓ audit_log (1-year retention)
+
+ENTERPRISE (+):
+✓ patient_consents (GDPR)
+✓ All previous tables with unlimited usage
+✓ audit_log (unlimited retention)
+
+═══════════════════════════════════════════════════════════════════════════════
+4. OPTIMIZATION STRATEGIES
+═══════════════════════════════════════════════════════════════════════════════
+
+**A. Indexing Strategy:**
+
+Critical indexes (MUST HAVE):
+1. All foreign keys (for JOIN performance)
+2. Frequently filtered columns (status, dates, patient_id)
+3. UNIQUE indexes on ID fields (patient_id, invoice_id, etc.)
+4. Composite indexes for common query patterns:
+   - (doctor_id, appointment_date) for schedule view
+   - (patient_id, status) for patient records
+   - (patient_id, payment_status) for dues
+
+**B. Query Optimization:**
+
+1. **Use prepared statements everywhere** (security + performance)
+2. **Fetch only needed columns** (avoid SELECT *)
+3. **Pagination** (LIMIT + OFFSET for large result sets)
+4. **COUNT optimization** (use COUNT(*) with LIMIT when possible)
+
+Example optimized query:
+```sql
+-- BAD (no index usage)
+SELECT * FROM {prefix}_hms_appointments 
+WHERE DATE_FORMAT(appointment_date, '%Y-%m') = '2026-01';
+
+-- GOOD (uses index)
+SELECT id, patient_id, doctor_id, appointment_date, status
+FROM {prefix}_hms_appointments 
+WHERE appointment_date >= '2026-01-01' AND appointment_date < '2026-02-01'
+ORDER BY appointment_date ASC
+LIMIT 50 OFFSET 0;
+```
+
+**C. Caching Strategy:**
+
+```php
+// Cache expensive queries
+function get_today_appointments($doctor_id) {
+    $cache_key = 'hms_today_appts_' . $doctor_id . '_' . date('Y-m-d');
+    $cached = get_transient($cache_key);
+    
+    if ($cached !== false) {
+        return $cached;
+    }
+    
+    // Expensive query
+    $appointments = /* DB query */;
+    
+    // Cache for 1 hour
+    set_transient($cache_key, $appointments, HOUR_IN_SECONDS);
+    
+    return $appointments;
+}
+```
+
+Cache candidates:
+- Today's appointments (1-hour TTL)
+- Lab test catalog (1-day TTL)
+- Medicine database (1-day TTL)
+- Bed availability (15-min TTL)
+- Report aggregates (6-hour TTL)
+
+**D. Table Partitioning (Future):**
+
+When audit_log exceeds 1 million rows:
+```sql
+ALTER TABLE {prefix}_hms_audit_log 
+PARTITION BY RANGE (YEAR(created_at)) (
+    PARTITION p2026 VALUES LESS THAN (2027),
+    PARTITION p2027 VALUES LESS THAN (2028),
+    PARTITION p2028 VALUES LESS THAN (2029)
+);
+```
+
+**E. Archive Strategy:**
+
+Automated monthly cron job:
+```php
+// Archive old audit logs
+function archive_old_audit_logs() {
+    global $wpdb;
+    
+    $retention_days = get_tier_retention_days(); // 30, 90, 365, or unlimited
+    
+    if ($retention_days === PHP_INT_MAX) {
+        return; // Enterprise - no archival
+    }
+    
+    // Move to archive table
+    $wpdb->query($wpdb->prepare(
+        "INSERT INTO {$wpdb->prefix}hms_audit_log_archive 
+         SELECT * FROM {$wpdb->prefix}hms_audit_log 
+         WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+        $retention_days
+    ));
+    
+    // Delete from main table
+    $wpdb->query($wpdb->prepare(
+        "DELETE FROM {$wpdb->prefix}hms_audit_log 
+         WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+        $retention_days
+    ));
+}
+```
+
+═══════════════════════════════════════════════════════════════════════════════
+5. DATABASE MIGRATION SYSTEM
+═══════════════════════════════════════════════════════════════════════════════
+
+**File: inc/Core/Database.php**
+
+```php
+namespace WPHelpZone\HMS\Core;
+
+class Database {
+    
+    private $current_version = '1.0.0';
+    private $wpdb;
+    private $charset_collate;
+    
+    public function __construct() {
+        global $wpdb;
+        $this->wpdb = $wpdb;
+        $this->charset_collate = $wpdb->get_charset_collate();
+    }
+    
+    /**
+     * Create all tables (run on plugin activation)
+     */
+    public function create_tables() {
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        
+        $tables = [
+            $this->get_patients_table_sql(),
+            $this->get_patient_history_table_sql(),
+            $this->get_patient_consents_table_sql(),
+            $this->get_appointments_table_sql(),
+            $this->get_beds_table_sql(),
+            $this->get_ipd_admissions_table_sql(),
+            $this->get_ipd_packages_table_sql(),
+            $this->get_lab_tests_table_sql(),
+            $this->get_lab_catalog_table_sql(),
+            $this->get_ot_bookings_table_sql(),
+            $this->get_prescriptions_table_sql(),
+            $this->get_invoices_table_sql(),
+            $this->get_payments_table_sql(),
+            $this->get_medicines_table_sql(),
+            $this->get_staff_table_sql(),
+            $this->get_attendance_table_sql(),
+            $this->get_audit_log_table_sql(),
+            $this->get_error_log_table_sql(),
+            $this->get_db_version_table_sql(),
+        ];
+        
+        foreach ($tables as $sql) {
+            dbDelta($sql);
+        }
+        
+        // Record version
+        $this->record_version($this->current_version, 'Initial database schema');
+    }
+    
+    /**
+     * Get patients table SQL
+     */
+    private function get_patients_table_sql() {
+        $table_name = $this->wpdb->prefix . 'hms_patients';
+        
+        return "CREATE TABLE {$table_name} (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            patient_id VARCHAR(20) UNIQUE NOT NULL,
+            barcode VARCHAR(50) UNIQUE,
+            first_name VARCHAR(100) NOT NULL,
+            last_name VARCHAR(100) NOT NULL,
+            date_of_birth DATE NOT NULL,
+            gender ENUM('male', 'female', 'other') NOT NULL,
+            blood_group VARCHAR(10),
+            phone VARCHAR(20) NOT NULL,
+            email VARCHAR(100),
+            address TEXT,
+            emergency_contact VARCHAR(20),
+            emergency_name VARCHAR(100),
+            registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            photo_url VARCHAR(255),
+            notes TEXT,
+            status ENUM('active', 'inactive', 'anonymized') DEFAULT 'active',
+            created_by BIGINT UNSIGNED,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_patient_id (patient_id),
+            INDEX idx_phone (phone),
+            INDEX idx_status (status),
+            INDEX idx_registration_date (registration_date),
+            INDEX idx_created_by (created_by),
+            FULLTEXT idx_name (first_name, last_name)
+        ) {$this->charset_collate};";
+    }
+    
+    // ... other table methods ...
+    
+    /**
+     * Record database version
+     */
+    private function record_version($version, $description) {
+        $table = $this->wpdb->prefix . 'hms_db_version';
+        
+        $this->wpdb->insert($table, [
+            'version' => $version,
+            'description' => $description,
+            'applied_at' => current_time('mysql')
+        ]);
+        
+        update_option('hms_db_version', $version);
+    }
+    
+    /**
+     * Check if migration needed
+     */
+    public function needs_migration() {
+        $installed_version = get_option('hms_db_version', '0.0.0');
+        return version_compare($installed_version, $this->current_version, '<');
+    }
+    
+    /**
+     * Run migrations
+     */
+    public function migrate() {
+        $installed_version = get_option('hms_db_version', '0.0.0');
+        
+        // Example future migration
+        if (version_compare($installed_version, '1.1.0', '<')) {
+            $this->migrate_to_1_1_0();
+        }
+        
+        if (version_compare($installed_version, '2.0.0', '<')) {
+            $this->migrate_to_2_0_0();
+        }
+    }
+    
+    /**
+     * Example migration method
+     */
+    private function migrate_to_1_1_0() {
+        // Add new column example
+        $table = $this->wpdb->prefix . 'hms_patients';
+        
+        $column_exists = $this->wpdb->get_results(
+            "SHOW COLUMNS FROM {$table} LIKE 'whatsapp_number'"
+        );
+        
+        if (empty($column_exists)) {
+            $this->wpdb->query(
+                "ALTER TABLE {$table} ADD COLUMN whatsapp_number VARCHAR(20) AFTER phone"
+            );
+        }
+        
+        $this->record_version('1.1.0', 'Added WhatsApp number field');
+    }
+}
+```
+
+═══════════════════════════════════════════════════════════════════════════════
+6. PERFORMANCE BENCHMARKS
+═══════════════════════════════════════════════════════════════════════════════
+
+Expected query performance (with proper indexes):
+
+Query Type                           | Rows    | Time (ms) | Optimization
+-------------------------------------|---------|-----------|------------------
+Patient by ID                        | 1       | <5ms      | UNIQUE index
+Appointments by doctor+date          | 10-50   | <10ms     | Composite index
+Due invoices list                    | 50-500  | <50ms     | Index on payment_status, due_date
+Dashboard stats (today)              | N/A     | <100ms    | Cached (1hr TTL)
+Patient search by name (FULLTEXT)    | 1-100   | <20ms     | FULLTEXT index
+Lab tests pending                    | 10-100  | <15ms     | Index on status
+Generate financial report (7 days)   | 500-5k  | <200ms    | Indexed date, cached
+
+═══════════════════════════════════════════════════════════════════════════════
+7. SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ Design COMPLETE schema on Day 1 (18 core tables)
+✓ Use tables progressively (MVP uses 8, PRO uses all 18)
+✓ No schema changes between tiers - only usage changes
+✓ Proper indexing for performance at scale
+✓ Caching strategy for expensive queries
+✓ Migration system for future updates
+✓ Archive strategy for log tables
+✓ Estimated to handle 10,000+ patients, 100,000+ transactions/year
+
+═══════════════════════════════════════════════════════════════════════════════
