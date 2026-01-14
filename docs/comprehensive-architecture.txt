@@ -83,7 +83,7 @@ Frontend Stack:
 │  ├── @wordpress/api-fetch (HTTP client)        │
 │  ├── @wordpress/i18n (Internationalization)    │
 │  ├── React Router v6 (SPA routing)             │
-│  ├── Tailwind CSS 3+ (Styling)                 │
+│  ├── Vanilla CSS (Custom styles)               │
 │  ├── Chart.js / Recharts (PRO - Charts)        │
 │  └── React Hook Form (Form management)         │
 └────────────────────────────────────────────────┘
@@ -238,7 +238,7 @@ wphelpzone-hms/
 │   ├── src/                        # React source
 │   │   ├── index.js               # Entry point
 │   │   ├── App.js                 # Root component
-│   │   ├── index.css              # Global styles (Tailwind)
+│   │   ├── index.css              # Global styles (vanilla CSS)
 │   │   │
 │   │   ├── components/             # React components
 │   │   │   ├── common/             # Shared components

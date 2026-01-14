@@ -1,9 +1,10 @@
 ═══════════════════════════════════════════════════════════════════════════════
-    HOSPITAL MANAGEMENT SYSTEM (HMS) - MVP RELEASE CHECKLIST
+    IYORAA - MVP RELEASE CHECKLIST
+    Hospital Management System for WordPress
 ═══════════════════════════════════════════════════════════════════════════════
 
 VERSION: 1.0 MVP (Minimum Viable Product)
-TARGET: 4-6 weeks development
+TARGET: 6 weeks development (realistic timeline)
 TIER: FREE TIER (Core Features)
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -12,28 +13,43 @@ PHASE 1: FOUNDATION & SETUP (Week 1)
 
 □ Project Setup
   □ Initialize plugin structure
-  □ Setup Composer (PSR-4 autoloading)
+  □ Setup Composer (PSR-4 autoloading: WPHelpZone\Iyoraa\)
   □ Setup package.json (npm dependencies)
-  □ Configure @wordpress/scripts
+  □ Configure @wordpress/scripts for React build
   □ Setup Git repository
   □ Create .gitignore
+  □ Git branching setup
+    □ Create develop branch from iyoraa
+    □ Setup branch protection for iyoraa (main/production)
 
-□ Database Schema
+□ Database Schema (ALL 18 TABLES - Day 1)
+  NOTE: Create ALL 18 tables on activation (even if unused in FREE tier)
+        This prevents schema changes later when adding PRO features
   □ Create patients table
   □ Create appointments table
   □ Create invoices table
   □ Create payments table
   □ Create staff table (basic)
   □ Create audit_log table
+  □ Create error_log table
+  □ Create db_version table
+  □ Create PRO tables (beds, ipd_admissions, lab_tests, etc.) - empty but ready
   □ Create database migration system
   □ Create database versioning
 
 □ Core Plugin Files
-  □ Main plugin file (wphelpzone-hms.php)
+  □ Main plugin file (iyoraa.php)
   □ Activator class (database creation)
   □ Deactivator class
   □ Uninstall script
-  □ Main plugin bootstrap class
+  □ Main plugin bootstrap class (WPHelpZone\Iyoraa\Core\Main)
+  □ LicenseManager class (FREE tier enforcement)
+
+□ React Build Setup
+  □ Configure @wordpress/scripts
+  □ Setup vanilla CSS (NOT Tailwind - custom CSS)
+  □ Setup hot reload for development
+  □ Test build process (npm run start, npm run build)
 
 □ Setup Wizard (FREE)
   □ Step 1: Hospital information

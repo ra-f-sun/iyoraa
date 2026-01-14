@@ -55,8 +55,10 @@ React 18+ (Functional Components)
 ├── @wordpress/scripts (official build tools)
 ├── Custom Hooks Pattern
 ├── Component-based UI (50-100 lines each)
-├── Tailwind CSS (core utilities only)
-│   └── Mobile-first responsive design (sm:, md:, lg:, xl: breakpoints)
+├── Vanilla CSS (custom styles for full control)
+│   └── Mobile-first responsive design (media queries
+
+)
 ├── React Router for SPA navigation
 ├── Error Boundaries for graceful error handling
 └── Progressive Web App (PWA) ready
