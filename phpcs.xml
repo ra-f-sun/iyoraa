@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<ruleset name="Iyoraa Coding Standards">
+    <description>WordPress Coding Standards for Iyoraa Plugin</description>
+
+    <!-- What to scan -->
+    <file>.</file>
+
+    <!-- Exclude patterns -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/assets/dist/*</exclude-pattern>
+    <exclude-pattern>*/assets/src/*</exclude-pattern>
+    <exclude-pattern>*/tests/*</exclude-pattern>
+    <exclude-pattern>*.js</exclude-pattern>
+    <exclude-pattern>*.css</exclude-pattern>
+    <exclude-pattern>*/templates/*</exclude-pattern>
+
+    <!-- Show progress -->
+    <arg value="ps"/>
+    <arg name="colors"/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/>
+
+    <!-- Rules: WordPress Coding Standards -->
+    <rule ref="WordPress">
+        <!-- Allow short array syntax (we use modern PHP) -->
+        <exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
+        <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+        
+        <!-- PSR-4 autoloading requires CamelCase class names - exclude lowercase file check -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+        
+        <!-- We use namespaces, so this is not applicable -->
+        <exclude name="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound"/>
+        <exclude name="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound"/>
+        
+        <!-- Allow WordPress core functions in global namespace -->
+        <exclude name="WordPress.WP.GlobalVariablesOverride"/>
+    </rule>
+
+    <!-- Check for PHP cross-version compatibility -->
+    <config name="testVersion" value="7.4-"/>
+    <rule ref="PHPCompatibilityWP"/>
+
+    <!-- Enforce WordPress naming conventions for options, hooks, etc -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="iyoraa"/>
+                <element value="IYORAA"/>
+                <element value="WPHelpZone\Iyoraa"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Text domain check -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="iyoraa"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- File naming - allow PSR-4 namespaced files -->
+    <rule ref="WordPress.Files.FileName">
+        <properties>
+            <property name="strict_class_file_names" value="false"/>
+        </properties>
+    </rule>
+
+    <!-- Minimum supported versions -->
+    <config name="minimum_supported_wp_version" value="5.8"/>
+    
+    <!-- WordPress-Extra rules -->
+    <rule ref="WordPress-Extra">
+        <!-- Exclude hook documentation requirement (too verbose for internal hooks) -->
+        <exclude name="WordPress.NamingConventions.ValidHookName.UseUnderscores"/>
+    </rule>
+    
+    <!-- WordPress-Docs rules -->
+    <rule ref="WordPress-Docs"/>
+    
+    <!-- Enforce proper escaping -->
+    <rule ref="WordPress.Security.EscapeOutput"/>
+    <rule ref="WordPress.Security.NonceVerification"/>
+    <rule ref="WordPress.Security.ValidatedSanitizedInput"/>
+</ruleset>
+

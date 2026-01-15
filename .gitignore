@@ -1,0 +1,54 @@
+# Composer
+/vendor/
+/vendor_prefixed/
+composer.lock
+
+# Node
+/node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Build
+/assets/dist/
+/assets/build/
+
+# WordPress
+wp-config.php
+.htaccess
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+/tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Temporary
+/tmp/
+*.tmp
+
+# Project Management
+*.txt
+
+# Documentation (keep local only)
+
+# Bin
+
