@@ -25,15 +25,30 @@ PHASE 1: FOUNDATION & SETUP (Week 1)
 □ Database Schema (ALL 18 TABLES - Day 1)
   NOTE: Create ALL 18 tables on activation (even if unused in FREE tier)
         This prevents schema changes later when adding PRO features
-  □ Create patients table
-  □ Create appointments table
-  □ Create invoices table
-  □ Create payments table
-  □ Create staff table (basic)
-  □ Create audit_log table
-  □ Create error_log table
-  □ Create db_version table
-  □ Create PRO tables (beds, ipd_admissions, lab_tests, etc.) - empty but ready
+  
+  MVP/FREE Tables (Used immediately):
+  □ 1. iyoraa_patients
+  □ 2. iyoraa_appointments
+  □ 3. iyoraa_invoices
+  □ 4. iyoraa_payments
+  □ 5. iyoraa_staff (basic)
+  □ 6. iyoraa_audit_log
+  □ 7. iyoraa_error_log
+  □ 8. iyoraa_db_version
+  
+  PRO Tables (Created but empty until PRO activated):
+  □ 9. iyoraa_patient_history [PRO-B]
+  □ 10. iyoraa_patient_consents [ENT]
+  □ 11. iyoraa_beds [PRO-S]
+  □ 12. iyoraa_ipd_admissions [PRO-S]
+  □ 13. iyoraa_ipd_packages [PRO-B]
+  □ 14. iyoraa_lab_tests [PRO-S]
+  □ 15. iyoraa_lab_catalog [PRO-S]
+  □ 16. iyoraa_ot_bookings [PRO-B]
+  □ 17. iyoraa_prescriptions [PRO-B]
+  □ 18. iyoraa_medicines [PRO-B]
+  □ 19. iyoraa_attendance [PRO-B]
+  
   □ Create database migration system
   □ Create database versioning
 
