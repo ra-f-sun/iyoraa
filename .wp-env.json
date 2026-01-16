@@ -1,0 +1,9 @@
+{
+  "name": "iyoraa",
+  "entry": {
+    "index": "./assets/src/index.js"
+  },
+  "output": {
+    "path": "./assets/dist"
+  }
+}
