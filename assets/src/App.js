@@ -1,64 +1,61 @@
-import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import PatientList from "./components/PatientList";
+import PatientForm from "./components/PatientForm";
+import PatientDetail from "./components/PatientDetail";
 
 function App() {
-  // Access WordPress localized data
-  const { tier, tierName } = window.iyoraaData || {
-    tier: "free",
-    tierName: "FREE",
-  };
-
   return (
-    <div className="iyoraa-container">
-      <header className="iyoraa-header">
-        <h1>Iyoraa - Hospital Management System</h1>
-        <div className="tier-badge">{tierName}</div>
-      </header>
-
-      <div className="iyoraa-dashboard">
-        <div className="welcome-card">
-          <h2>Welcome to Iyoraa MVP!</h2>
-          <p>Your hospital management system is successfully installed.</p>
-          <p className="version">Version 1.0.0 - MVP Release</p>
-        </div>
-
-        <div className="quick-stats">
-          <div className="stat-card">
-            <h3>Patients</h3>
-            <p className="stat-number">0</p>
-            <p className="stat-label">Total Registered</p>
+    <Router basename="/wp-admin/admin.php?page=iyoraa">
+      <div className="iyoraa-app">
+        <header className="iyoraa-header">
+          <div className="header-container">
+            <h1>Iyoraa Hospital Management System</h1>
+            <div className="tier-badge">
+              {window.iyoraaData?.currentTier || "FREE"}
+            </div>
           </div>
+        </header>
 
-          <div className="stat-card">
-            <h3>Appointments</h3>
-            <p className="stat-number">0</p>
-            <p className="stat-label">This Month</p>
+        <nav className="iyoraa-nav">
+          <div className="nav-container">
+            <a href="#!" className="nav-link active">
+              Patients
+            </a>
+            <a href="#!" className="nav-link disabled">
+              Appointments
+            </a>
+            <a href="#!" className="nav-link disabled">
+              Billing
+            </a>
+            <a href="#!" className="nav-link disabled">
+              Reports
+            </a>
           </div>
+        </nav>
 
-          <div className="stat-card">
-            <h3>Due Amount</h3>
-            <p className="stat-number">৳ 0</p>
-            <p className="stat-label">Outstanding</p>
-          </div>
-        </div>
+        <main className="iyoraa-main">
+          <Routes>
+            <Route path="/" element={<Navigate to="/patients" replace />} />
+            <Route path="/patients" element={<PatientList />} />
+            <Route path="/patients/new" element={<PatientForm />} />
+            <Route path="/patients/:id" element={<PatientDetail />} />
+            <Route path="/patients/:id/edit" element={<PatientForm />} />
+          </Routes>
+        </main>
 
-        <div className="info-section">
-          <h3>Next Steps:</h3>
-          <ol>
-            <li>
-              Run <code>composer install</code> to install PHP dependencies
-            </li>
-            <li>
-              Run <code>npm install</code> to install JavaScript dependencies
-            </li>
-            <li>
-              Run <code>npm start</code> to start development mode
-            </li>
-            <li>Check database - all 19 tables should be created</li>
-            <li>Start building Patient Management module (Phase 2)</li>
-          </ol>
-        </div>
+        <footer className="iyoraa-footer">
+          <p>
+            Iyoraa Hospital Management System v
+            {window.iyoraaData?.version || "1.0.0"}
+          </p>
+        </footer>
       </div>
-    </div>
+    </Router>
   );
 }
 

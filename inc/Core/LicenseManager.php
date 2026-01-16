@@ -1,5 +1,4 @@
 <?php
-
 /**
  * License Manager
  *
@@ -17,8 +16,7 @@ namespace WPHelpZone\Iyoraa\Core;
  *
  * Manages license tiers, feature access, and resource limits.
  */
-class LicenseManager {
-
+class LicenseManager extends Singleton {
 
 
 	/**
@@ -69,24 +67,37 @@ class LicenseManager {
 	/**
 	 * Check if limit is reached for a resource.
 	 *
-	 * @param string $resource The resource type (patients, appointments, etc).
+	 * @param string $resource_type The resource type (patients, appointments, etc).
 	 * @param int    $current_count Current count.
 	 * @return bool Whether limit is reached.
 	 */
-	public static function is_limit_reached( $resource, $current_count ) {
+	public static function is_limit_reached( $resource_type, $current_count ) {
 		$tier   = self::get_tier();
 		$limits = self::get_tier_limits( $tier );
 
-		if ( ! isset( $limits[ $resource ] ) ) {
+		if ( ! isset( $limits[ $resource_type ] ) ) {
 			return false; // No limit.
 		}
 
-		$limit = $limits[ $resource ];
+		$limit = $limits[ $resource_type ];
 		if ( -1 === $limit ) {
 			return false; // Unlimited.
 		}
 
 		return $current_count >= $limit;
+	}
+
+	/**
+	 * Get resource limit for a specific resource type.
+	 *
+	 * @param string $resource_type Resource type (patients, appointments, etc).
+	 * @return int Limit value (-1 = unlimited).
+	 */
+	public static function get_resource_limit( $resource_type ) {
+		$tier   = self::get_tier();
+		$limits = self::get_tier_limits( $tier );
+
+		return $limits[ $resource_type ] ?? -1; // Default to unlimited if not defined.
 	}
 
 	/**

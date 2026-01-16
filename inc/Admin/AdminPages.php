@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Admin Page Handlers
  *
@@ -57,7 +56,7 @@ class AdminPages {
 			return;
 		}
 
-		$tier = sanitize_text_field( $_POST['iyoraa_tier'] );
+		$tier = sanitize_text_field( wp_unslash( $_POST['iyoraa_tier'] ) );
 
 		if ( LicenseManager::set_tier( $tier ) ) {
 			add_settings_error(

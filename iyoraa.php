@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: Iyoraa - Hospital Management System
  * Plugin URI: https://iyoraa.com

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * REST API Registry
  *
@@ -11,6 +10,7 @@
 namespace WPHelpZone\Iyoraa\API;
 
 use WPHelpZone\Iyoraa\Core\LicenseManager;
+use WPHelpZone\Iyoraa\API\PatientAPI;
 
 /**
  * API Registry class.
@@ -20,6 +20,7 @@ use WPHelpZone\Iyoraa\Core\LicenseManager;
 class APIRegistry {
 
 
+
 	/**
 	 * Register all REST API routes.
 	 */
@@ -27,7 +28,9 @@ class APIRegistry {
 		// Status endpoint (for testing).
 		self::register_status_endpoint();
 
-		// Future: Patient endpoints will be registered here in Phase 2.
+		// Patient endpoints.
+		PatientAPI::register_routes();
+
 		// Future: Appointment endpoints will be registered here in Phase 3.
 		// Future: Billing endpoints will be registered here in Phase 4.
 	}

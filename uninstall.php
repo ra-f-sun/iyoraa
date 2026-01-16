@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Uninstall script
  *
@@ -51,12 +50,25 @@ $tables = [
 	$wpdb->prefix . 'iyoraa_db_version',
 ];
 
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 foreach ( $tables as $table ) {
-	$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+	$wpdb->query( sprintf( 'DROP TABLE IF EXISTS %s', $table ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Table names cannot be parameterized.
 }
 
 // Delete all plugin options.
-$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'iyoraa_%'" );
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+		'iyoraa_%'
+	)
+);
+// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+// phpcs:enable WordPress.DB.DirectDatabaseQuery.NoCaching
+// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery
+// phpcs:enable WordPress.DB.DirectDatabaseQuery.SchemaChange
 
 // Clear any cached data.
 wp_cache_flush();
