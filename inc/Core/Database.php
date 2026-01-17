@@ -115,6 +115,15 @@ class Database extends Singleton {
 	/**
 	 * Create patients table [MVP].
 	 *
+	 * Optimized indexes for common queries:
+	 * - idx_patient_id: Quick patient ID lookup
+	 * - idx_phone: Phone number search
+	 * - idx_status_created: List active patients ordered by date
+	 * - idx_email: Email lookup (for PRO features)
+	 * - idx_search: FULLTEXT search on name, phone, patient_id
+	 * - idx_age_gender: Demographics filtering
+	 * - idx_blood_group: Blood group queries (for emergencies)
+	 *
 	 * @param string $prefix          Database table prefix.
 	 * @param string $charset_collate Database charset collation.
 	 */
@@ -137,8 +146,11 @@ class Database extends Singleton {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_patient_id (patient_id),
             INDEX idx_phone (phone),
-            INDEX idx_status (status),
-            FULLTEXT idx_name (full_name)
+            INDEX idx_status_created (status, created_at DESC),
+            INDEX idx_email (email),
+            INDEX idx_age_gender (age, gender),
+            INDEX idx_blood_group (blood_group),
+            FULLTEXT idx_search (full_name, phone, patient_id)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -196,6 +208,14 @@ class Database extends Singleton {
 	/**
 	 * Create appointments table [MVP].
 	 *
+	 * Optimized indexes:
+	 * - idx_appointment_id: Quick appointment lookup
+	 * - idx_doctor_date_time: Doctor's daily schedule (most common query)
+	 * - idx_patient_date: Patient appointment history
+	 * - idx_status_date: List by status and date
+	 * - idx_payment_status: Unpaid appointments report
+	 * - idx_created_at: Recent appointments
+	 *
 	 * @param string $prefix          Database table prefix.
 	 * @param string $charset_collate Database charset collation.
 	 */
@@ -220,11 +240,11 @@ class Database extends Singleton {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_appointment_id (appointment_id),
-            INDEX idx_doctor_date (doctor_id, appointment_date),
-            INDEX idx_patient (patient_id),
-            INDEX idx_status (status),
+            INDEX idx_doctor_date_time (doctor_id, appointment_date, appointment_time),
+            INDEX idx_patient_date (patient_id, appointment_date DESC),
+            INDEX idx_status_date (status, appointment_date),
             INDEX idx_payment_status (payment_status),
-            INDEX idx_date_time (appointment_date, appointment_time)
+            INDEX idx_created_at (created_at DESC)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -455,6 +475,14 @@ class Database extends Singleton {
 	/**
 	 * Create invoices table [MVP] - CRITICAL.
 	 *
+	 * Optimized indexes for financial reports:
+	 * - idx_invoice_id: Quick invoice lookup
+	 * - idx_payment_status_date: Outstanding invoices report (most common)
+	 * - idx_patient_date: Patient invoice history
+	 * - idx_due_date_status: Overdue invoices alert
+	 * - idx_type_date: Revenue by type report
+	 * - idx_issued_by: Staff performance tracking
+	 *
 	 * @param string $prefix          Database table prefix.
 	 * @param string $charset_collate Database charset collation.
 	 */
@@ -481,11 +509,11 @@ class Database extends Singleton {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_invoice_id (invoice_id),
-            INDEX idx_patient_status (patient_id, payment_status),
-            INDEX idx_invoice_type (invoice_type),
-            INDEX idx_due_date (due_date),
-            INDEX idx_issued_by (issued_by),
-            INDEX idx_invoice_date (invoice_date)
+            INDEX idx_payment_status_date (payment_status, invoice_date DESC),
+            INDEX idx_patient_date (patient_id, invoice_date DESC),
+            INDEX idx_due_date_status (due_date, payment_status),
+            INDEX idx_type_date (invoice_type, invoice_date),
+            INDEX idx_issued_by (issued_by)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -493,6 +521,14 @@ class Database extends Singleton {
 
 	/**
 	 * Create payments table [MVP] - CRITICAL.
+	 *
+	 * Optimized indexes for payment tracking:
+	 * - idx_payment_id: Quick payment lookup
+	 * - idx_invoice_id: Invoice payment history
+	 * - idx_payment_date: Daily collection report
+	 * - idx_method_date: Payment method analysis
+	 * - idx_received_by_date: Staff collection tracking
+	 * - idx_patient_date: Patient payment history
 	 *
 	 * @param string $prefix          Database table prefix.
 	 * @param string $charset_collate Database charset collation.
@@ -513,9 +549,10 @@ class Database extends Singleton {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_payment_id (payment_id),
             INDEX idx_invoice_id (invoice_id),
-            INDEX idx_payment_date (payment_date),
-            INDEX idx_received_by (received_by),
-            INDEX idx_patient (patient_id)
+            INDEX idx_payment_date (payment_date DESC),
+            INDEX idx_method_date (payment_method, payment_date),
+            INDEX idx_received_by_date (received_by, payment_date DESC),
+            INDEX idx_patient_date (patient_id, payment_date DESC)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -626,6 +663,13 @@ class Database extends Singleton {
 	/**
 	 * Create audit log table [ALL] - CRITICAL.
 	 *
+	 * Optimized indexes for security and compliance:
+	 * - idx_user_action_date: User activity tracking
+	 * - idx_entity_date: Entity change history
+	 * - idx_action_date: Action-specific reports
+	 * - idx_created_at: Chronological audit trail
+	 * - idx_ip_address: IP-based security analysis
+	 *
 	 * @param string $prefix          Database table prefix.
 	 * @param string $charset_collate Database charset collation.
 	 */
@@ -641,10 +685,11 @@ class Database extends Singleton {
             ip_address VARCHAR(45),
             user_agent TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_user_id (user_id),
-            INDEX idx_entity (entity_type, entity_id),
-            INDEX idx_action (action),
-            INDEX idx_created_at (created_at)
+            INDEX idx_user_action_date (user_id, action, created_at DESC),
+            INDEX idx_entity_date (entity_type, entity_id, created_at DESC),
+            INDEX idx_action_date (action, created_at DESC),
+            INDEX idx_created_at (created_at DESC),
+            INDEX idx_ip_address (ip_address)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -652,6 +697,11 @@ class Database extends Singleton {
 
 	/**
 	 * Create error log table [ALL].
+	 *
+	 * Optimized indexes for debugging and monitoring:
+	 * - idx_level_date: Error severity tracking
+	 * - idx_created_at: Chronological error log
+	 * - idx_user_id: User-specific error patterns
 	 *
 	 * @param string $prefix          Database table prefix.
 	 * @param string $charset_collate Database charset collation.
@@ -667,8 +717,9 @@ class Database extends Singleton {
             user_agent TEXT,
             url VARCHAR(255),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_level (level),
-            INDEX idx_created_at (created_at)
+            INDEX idx_level_date (level, created_at DESC),
+            INDEX idx_created_at (created_at DESC),
+            INDEX idx_user_id (user_id)
         ) $charset_collate;";
 
 		dbDelta( $sql );

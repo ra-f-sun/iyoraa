@@ -7,6 +7,10 @@
 
 namespace WPHelpZone\Iyoraa\Core;
 
+use WPHelpZone\Iyoraa\Validation\PatientValidator;
+use WPHelpZone\Iyoraa\Exceptions\ValidationException;
+use WPHelpZone\Iyoraa\Exceptions\DatabaseException;
+
 /**
  * Patient Manager class.
  *
@@ -49,11 +53,14 @@ class PatientManager extends Singleton {
 			);
 		}
 
-		// Validate required fields.
+		// Validate and sanitize patient data using PatientValidator.
 		$validation = $this->validate_patient_data( $data );
 		if ( is_wp_error( $validation ) ) {
 			return $validation;
 		}
+
+		// Sanitize input data using PatientValidator.
+		$sanitized_data = PatientValidator::sanitize( $data );
 
 		// Generate unique patient ID.
 		$patient_id = $this->generate_patient_id();
@@ -62,16 +69,16 @@ class PatientManager extends Singleton {
 
 		$insert_data = [
 			'patient_id'              => $patient_id,
-			'full_name'               => sanitize_text_field( $data['full_name'] ),
-			'age'                     => absint( $data['age'] ),
-			'gender'                  => sanitize_text_field( $data['gender'] ),
-			'phone'                   => sanitize_text_field( $data['phone'] ),
-			'email'                   => isset( $data['email'] ) ? sanitize_email( $data['email'] ) : '',
-			'address'                 => isset( $data['address'] ) ? sanitize_textarea_field( $data['address'] ) : '',
-			'blood_group'             => isset( $data['blood_group'] ) ? sanitize_text_field( $data['blood_group'] ) : '',
-			'emergency_contact_name'  => isset( $data['emergency_contact_name'] ) ? sanitize_text_field( $data['emergency_contact_name'] ) : '',
-			'emergency_contact_phone' => isset( $data['emergency_contact_phone'] ) ? sanitize_text_field( $data['emergency_contact_phone'] ) : '',
-			'medical_history'         => isset( $data['medical_history'] ) ? sanitize_textarea_field( $data['medical_history'] ) : '',
+			'full_name'               => $sanitized_data['full_name'],
+			'age'                     => $sanitized_data['age'],
+			'gender'                  => $sanitized_data['gender'],
+			'phone'                   => $sanitized_data['phone'],
+			'email'                   => $sanitized_data['email'],
+			'address'                 => $sanitized_data['address'],
+			'blood_group'             => $sanitized_data['blood_group'],
+			'emergency_contact_name'  => $sanitized_data['emergency_contact_name'],
+			'emergency_contact_phone' => $sanitized_data['emergency_contact_phone'],
+			'medical_history'         => $sanitized_data['medical_history'],
 			'status'                  => 'active',
 			'created_at'              => current_time( 'mysql' ),
 			'updated_at'              => current_time( 'mysql' ),
@@ -172,25 +179,28 @@ class PatientManager extends Singleton {
 			return $existing;
 		}
 
-		// Validate data.
+		// Validate and sanitize patient data using PatientValidator.
 		$validation = $this->validate_patient_data( $data, $id );
 		if ( is_wp_error( $validation ) ) {
 			return $validation;
 		}
 
+		// Sanitize input data using PatientValidator.
+		$sanitized_data = PatientValidator::sanitize( $data );
+
 		global $wpdb;
 
 		$update_data = [
-			'full_name'               => sanitize_text_field( $data['full_name'] ),
-			'age'                     => absint( $data['age'] ),
-			'gender'                  => sanitize_text_field( $data['gender'] ),
-			'phone'                   => sanitize_text_field( $data['phone'] ),
-			'email'                   => isset( $data['email'] ) ? sanitize_email( $data['email'] ) : '',
-			'address'                 => isset( $data['address'] ) ? sanitize_textarea_field( $data['address'] ) : '',
-			'blood_group'             => isset( $data['blood_group'] ) ? sanitize_text_field( $data['blood_group'] ) : '',
-			'emergency_contact_name'  => isset( $data['emergency_contact_name'] ) ? sanitize_text_field( $data['emergency_contact_name'] ) : '',
-			'emergency_contact_phone' => isset( $data['emergency_contact_phone'] ) ? sanitize_text_field( $data['emergency_contact_phone'] ) : '',
-			'medical_history'         => isset( $data['medical_history'] ) ? sanitize_textarea_field( $data['medical_history'] ) : '',
+			'full_name'               => $sanitized_data['full_name'],
+			'age'                     => $sanitized_data['age'],
+			'gender'                  => $sanitized_data['gender'],
+			'phone'                   => $sanitized_data['phone'],
+			'email'                   => $sanitized_data['email'],
+			'address'                 => $sanitized_data['address'],
+			'blood_group'             => $sanitized_data['blood_group'],
+			'emergency_contact_name'  => $sanitized_data['emergency_contact_name'],
+			'emergency_contact_phone' => $sanitized_data['emergency_contact_phone'],
+			'medical_history'         => $sanitized_data['medical_history'],
 			'updated_at'              => current_time( 'mysql' ),
 		];
 
@@ -476,60 +486,48 @@ class PatientManager extends Singleton {
 	}
 
 	/**
-	 * Validate patient data.
+	 * Validate patient data using PatientValidator.
 	 *
-	 * @param array $data      Patient data.
-	 * @param int   $patient_id Patient ID for updates (optional).
-	 * @return true|WP_Error True if valid, WP_Error otherwise.
+	 * @param array $data       Patient data to validate.
+	 * @param int   $patient_id Optional patient ID for update validation.
+	 * @return true|\WP_Error True if valid, WP_Error otherwise.
 	 */
 	private function validate_patient_data( $data, $patient_id = null ) {
-		// Required fields.
-		$required = [ 'full_name', 'age', 'gender', 'phone' ];
-
-		foreach ( $required as $field ) {
-			if ( empty( $data[ $field ] ) ) {
+		try {
+			// Use PatientValidator for comprehensive validation.
+			$errors = PatientValidator::validate( $data );
+			
+			if ( ! empty( $errors ) ) {
+				// Convert validation errors to WP_Error format.
+				$error_messages = [];
+				foreach ( $errors as $field => $message ) {
+					$error_messages[] = $message;
+				}
+				
 				return new \WP_Error(
-					'missing_required_field',
-					sprintf(
-						/* translators: %s: field name */
-						__( 'Missing required field: %s', 'iyoraa' ),
-						$field
-					),
+					'validation_failed',
+					implode( ' ', $error_messages ),
+					[ 'status' => 400, 'errors' => $errors ]
+				);
+			}
+
+			// Check phone uniqueness (business logic, not pure validation).
+			if ( ! $this->is_phone_unique( $data['phone'], $patient_id ) ) {
+				return new \WP_Error(
+					'duplicate_phone',
+					__( 'This phone number is already registered.', 'iyoraa' ),
 					[ 'status' => 400 ]
 				);
 			}
-		}
 
-		// Validate age.
-		$age = absint( $data['age'] );
-		if ( $age < 0 || $age > 150 ) {
+			return true;
+		} catch ( \Exception $e ) {
 			return new \WP_Error(
-				'invalid_age',
-				__( 'Age must be between 0 and 150.', 'iyoraa' ),
-				[ 'status' => 400 ]
+				'validation_error',
+				$e->getMessage(),
+				[ 'status' => 500 ]
 			);
 		}
-
-		// Validate gender.
-		$valid_genders = [ 'male', 'female', 'other' ];
-		if ( ! in_array( strtolower( $data['gender'] ), $valid_genders, true ) ) {
-			return new \WP_Error(
-				'invalid_gender',
-				__( 'Gender must be male, female, or other.', 'iyoraa' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		// Validate phone uniqueness.
-		if ( ! $this->is_phone_unique( $data['phone'], $patient_id ) ) {
-			return new \WP_Error(
-				'duplicate_phone',
-				__( 'This phone number is already registered.', 'iyoraa' ),
-				[ 'status' => 400 ]
-			);
-		}
-
-		return true;
 	}
 
 	/**
