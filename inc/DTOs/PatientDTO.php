@@ -134,21 +134,21 @@ class PatientDTO {
 	public static function from_array( array $data ): self {
 		$dto = new self();
 
-		$dto->id                       = (int) $data['id'];
-		$dto->patient_id               = $data['patient_id'];
-		$dto->full_name                = $data['full_name'];
-		$dto->age                      = (int) $data['age'];
-		$dto->gender                   = $data['gender'];
-		$dto->phone                    = $data['phone'];
-		$dto->email                    = $data['email'] ?? null;
-		$dto->address                  = $data['address'] ?? null;
-		$dto->blood_group              = $data['blood_group'] ?? null;
-		$dto->emergency_contact_name   = $data['emergency_contact_name'] ?? null;
-		$dto->emergency_contact_phone  = $data['emergency_contact_phone'] ?? null;
-		$dto->medical_history          = $data['medical_history'] ?? null;
-		$dto->status                   = $data['status'];
-		$dto->created_at               = $data['created_at'];
-		$dto->updated_at               = $data['updated_at'];
+		$dto->id                      = (int) $data['id'];
+		$dto->patient_id              = $data['patient_id'];
+		$dto->full_name               = $data['full_name'];
+		$dto->age                     = (int) $data['age'];
+		$dto->gender                  = $data['gender'];
+		$dto->phone                   = $data['phone'];
+		$dto->email                   = $data['email'] ?? null;
+		$dto->address                 = $data['address'] ?? null;
+		$dto->blood_group             = $data['blood_group'] ?? null;
+		$dto->emergency_contact_name  = $data['emergency_contact_name'] ?? null;
+		$dto->emergency_contact_phone = $data['emergency_contact_phone'] ?? null;
+		$dto->medical_history         = $data['medical_history'] ?? null;
+		$dto->status                  = $data['status'];
+		$dto->created_at              = $data['created_at'];
+		$dto->updated_at              = $data['updated_at'];
 
 		return $dto;
 	}
@@ -184,7 +184,7 @@ class PatientDTO {
 	 * @return bool True if active.
 	 */
 	public function is_active(): bool {
-		return $this->status === 'active';
+		return 'active' === $this->status;
 	}
 
 	/**

@@ -64,17 +64,17 @@ class Validator {
 	 */
 	protected function validate_length( string $value, string $field, int $min = 0, int $max = PHP_INT_MAX ): bool {
 		$length = strlen( $value );
-		
+
 		if ( $length < $min ) {
 			$this->add_error( $field, "{$field} must be at least {$min} characters" );
 			return false;
 		}
-		
+
 		if ( $length > $max ) {
 			$this->add_error( $field, "{$field} must not exceed {$max} characters" );
 			return false;
 		}
-		
+
 		return true;
 	}
 
@@ -137,13 +137,13 @@ class Validator {
 	protected function validate_phone( string $phone, string $field = 'phone' ): bool {
 		// Remove common formatting characters.
 		$cleaned = preg_replace( '/[^0-9+]/', '', $phone );
-		
+
 		// Must be 10-20 digits (supports international).
 		if ( strlen( $cleaned ) < 10 || strlen( $cleaned ) > 20 ) {
 			$this->add_error( $field, "{$field} must be 10-20 digits" );
 			return false;
 		}
-		
+
 		return true;
 	}
 
@@ -173,7 +173,7 @@ class Validator {
 		if ( empty( $blood_group ) ) {
 			return true; // Optional field.
 		}
-		
+
 		$valid_groups = [ 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-' ];
 		return $this->validate_in( $blood_group, $field, $valid_groups );
 	}
@@ -231,7 +231,7 @@ class Validator {
 		if ( empty( $this->errors ) ) {
 			return null;
 		}
-		
+
 		$first_field = array_key_first( $this->errors );
 		return $this->errors[ $first_field ][0] ?? null;
 	}
@@ -253,7 +253,7 @@ class Validator {
 	 */
 	public function sanitize( array $data ): array {
 		$sanitized = [];
-		
+
 		foreach ( $data as $key => $value ) {
 			if ( is_string( $value ) ) {
 				$sanitized[ $key ] = sanitize_text_field( $value );
@@ -265,7 +265,7 @@ class Validator {
 				$sanitized[ $key ] = $value;
 			}
 		}
-		
+
 		return $sanitized;
 	}
 }

@@ -232,7 +232,7 @@ abstract class BaseRepository {
 		if ( $id ) {
 			wp_cache_delete( $this->get_cache_key( $id ), $this->cache_group );
 		}
-		
+
 		// Clear list caches.
 		wp_cache_delete( 'count_all', $this->cache_group );
 		wp_cache_flush();

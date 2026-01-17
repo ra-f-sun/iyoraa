@@ -23,15 +23,15 @@ class DatabaseException extends IyoraaException {
 	 */
 	public function __construct( string $operation, string $table = '', string $details = '' ) {
 		$message = sprintf( 'Database %s operation failed', $operation );
-		
+
 		if ( $table ) {
 			$message .= " on table {$table}";
 		}
-		
+
 		if ( $details ) {
 			$message .= ": {$details}";
 		}
-		
+
 		parent::__construct(
 			$message,
 			500,

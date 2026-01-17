@@ -141,8 +141,8 @@ class PatientAPI {
 		}
 
 		// Convert DTO to array for API response.
-		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' ) 
-			? $result->to_array() 
+		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' )
+			? $result->to_array()
 			: $result;
 
 		return new \WP_REST_Response(
@@ -194,8 +194,8 @@ class PatientAPI {
 		}
 
 		// Convert DTO to array for API response.
-		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' ) 
-			? $result->to_array() 
+		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' )
+			? $result->to_array()
 			: $result;
 
 		return new \WP_REST_Response(
@@ -224,8 +224,8 @@ class PatientAPI {
 		}
 
 		// Convert DTO to array for API response.
-		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' ) 
-			? $result->to_array() 
+		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' )
+			? $result->to_array()
 			: $result;
 
 		return new \WP_REST_Response(

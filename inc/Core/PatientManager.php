@@ -76,7 +76,10 @@ class PatientManager extends Singleton {
 				return new \WP_Error(
 					'validation_failed',
 					implode( ' ', $errors ),
-					[ 'status' => 400, 'errors' => $errors ]
+					[
+						'status' => 400,
+						'errors' => $errors,
+					]
 				);
 			}
 
@@ -132,7 +135,7 @@ class PatientManager extends Singleton {
 	public function get_patient( $id ) {
 		try {
 			$patient_data = $this->repository->find( $id );
-			
+
 			if ( ! $patient_data ) {
 				return new \WP_Error(
 					'patient_not_found',
@@ -177,7 +180,10 @@ class PatientManager extends Singleton {
 				return new \WP_Error(
 					'validation_failed',
 					implode( ' ', $errors ),
-					[ 'status' => 400, 'errors' => $errors ]
+					[
+						'status' => 400,
+						'errors' => $errors,
+					]
 				);
 			}
 
@@ -239,10 +245,13 @@ class PatientManager extends Singleton {
 			}
 
 			// Soft delete - mark as inactive.
-			$this->repository->update( $id, [
-				'status'     => 'inactive',
-				'updated_at' => current_time( 'mysql' ),
-			] );
+			$this->repository->update(
+				$id,
+				[
+					'status'     => 'inactive',
+					'updated_at' => current_time( 'mysql' ),
+				]
+			);
 
 			// Log activity.
 			$this->log_activity( 'patient_deleted', $id );
@@ -285,9 +294,12 @@ class PatientManager extends Singleton {
 		$total    = $this->repository->count();
 
 		// Convert to DTOs.
-		$patient_dtos = array_map( function( $patient ) {
-			return PatientDTO::from_array( $patient )->to_array();
-		}, $patients );
+		$patient_dtos = array_map(
+			function ( $patient ) {
+				return PatientDTO::from_array( $patient )->to_array();
+			},
+			$patients
+		);
 
 		return [
 			'patients'    => $patient_dtos,
@@ -317,9 +329,12 @@ class PatientManager extends Singleton {
 		$patients = $this->repository->search( $query, $args['per_page'] );
 
 		// Convert to DTOs.
-		$patient_dtos = array_map( function( $patient ) {
-			return PatientDTO::from_array( $patient )->to_array();
-		}, $patients );
+		$patient_dtos = array_map(
+			function ( $patient ) {
+				return PatientDTO::from_array( $patient )->to_array();
+			},
+			$patients
+		);
 
 		return [
 			'patients'    => $patient_dtos,

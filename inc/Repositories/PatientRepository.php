@@ -184,11 +184,11 @@ class PatientRepository extends BaseRepository {
 		$patients = $this->find_by_status( 'active', $per_page, $offset );
 
 		return [
-			'patients'    => $patients,
-			'total'       => $total,
-			'per_page'    => $per_page,
-			'current_page'=> $page,
-			'total_pages' => ceil( $total / $per_page ),
+			'patients'     => $patients,
+			'total'        => $total,
+			'per_page'     => $per_page,
+			'current_page' => $page,
+			'total_pages'  => ceil( $total / $per_page ),
 		];
 	}
 

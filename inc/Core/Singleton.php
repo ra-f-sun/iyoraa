@@ -41,7 +41,7 @@ abstract class Singleton {
 
 		if ( ! isset( self::$instances[ $class ] ) ) {
 			self::$instances[ $class ] = new static();
-			
+
 			// Call init() if it exists in child class.
 			if ( method_exists( self::$instances[ $class ], 'init' ) ) {
 				self::$instances[ $class ]->init();
