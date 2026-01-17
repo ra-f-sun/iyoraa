@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Database Schema Manager
  *
@@ -16,14 +15,46 @@ namespace WPHelpZone\Iyoraa\Core;
  *
  * Manages database schema creation and migrations.
  */
-class Database {
-
-
+class Database extends Singleton {
 
 	/**
 	 * Database version.
 	 */
 	const DB_VERSION = '1.0.0';
+
+	/**
+	 * Table name constants (without prefix).
+	 */
+	const DB_VERSION_TABLE       = 'iyoraa_db_version';
+	const PATIENTS_TABLE         = 'iyoraa_patients';
+	const PATIENT_HISTORY_TABLE  = 'iyoraa_patient_history';
+	const PATIENT_CONSENTS_TABLE = 'iyoraa_patient_consents';
+	const APPOINTMENTS_TABLE     = 'iyoraa_appointments';
+	const BEDS_TABLE             = 'iyoraa_beds';
+	const IPD_ADMISSIONS_TABLE   = 'iyoraa_ipd_admissions';
+	const IPD_PACKAGES_TABLE     = 'iyoraa_ipd_packages';
+	const LAB_TESTS_TABLE        = 'iyoraa_lab_tests';
+	const LAB_CATALOG_TABLE      = 'iyoraa_lab_catalog';
+	const OT_BOOKINGS_TABLE      = 'iyoraa_ot_bookings';
+	const PRESCRIPTIONS_TABLE    = 'iyoraa_prescriptions';
+	const INVOICES_TABLE         = 'iyoraa_invoices';
+	const PAYMENTS_TABLE         = 'iyoraa_payments';
+	const MEDICINES_TABLE        = 'iyoraa_medicines';
+	const STAFF_TABLE            = 'iyoraa_staff';
+	const ATTENDANCE_TABLE       = 'iyoraa_attendance';
+	const AUDIT_LOG_TABLE        = 'iyoraa_audit_log';
+	const ERROR_LOG_TABLE        = 'iyoraa_error_log';
+
+	/**
+	 * Get table name with WordPress prefix.
+	 *
+	 * @param string $table Table name constant.
+	 * @return string Full table name with prefix.
+	 */
+	public function get_table_name( $table ) {
+		global $wpdb;
+		return $wpdb->prefix . $table;
+	}
 
 	/**
 	 * Create all database tables.
@@ -65,6 +96,9 @@ class Database {
 
 	/**
 	 * Create version tracking table.
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_version_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}db_version (
@@ -80,35 +114,43 @@ class Database {
 
 	/**
 	 * Create patients table [MVP].
+	 *
+	 * Optimized indexes for common queries:
+	 * - idx_patient_id: Quick patient ID lookup
+	 * - idx_phone: Phone number search
+	 * - idx_status_created: List active patients ordered by date
+	 * - idx_email: Email lookup (for PRO features)
+	 * - idx_search: FULLTEXT search on name, phone, patient_id
+	 * - idx_age_gender: Demographics filtering
+	 * - idx_blood_group: Blood group queries (for emergencies)
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_patients_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}patients (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             patient_id VARCHAR(20) UNIQUE NOT NULL COMMENT 'HOS-2026-0001',
-            barcode VARCHAR(50) UNIQUE COMMENT 'For smart ID cards [PRO-S]',
-            first_name VARCHAR(100) NOT NULL,
-            last_name VARCHAR(100) NOT NULL,
-            date_of_birth DATE NOT NULL,
+            full_name VARCHAR(200) NOT NULL,
+            age INT NOT NULL,
             gender ENUM('male', 'female', 'other') NOT NULL,
-            blood_group VARCHAR(10),
             phone VARCHAR(20) NOT NULL,
             email VARCHAR(100),
             address TEXT,
-            emergency_contact VARCHAR(20),
-            emergency_name VARCHAR(100),
-            registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-            photo_url VARCHAR(255) COMMENT 'Patient photo [PRO-S]',
-            notes TEXT,
-            status ENUM('active', 'inactive', 'anonymized') DEFAULT 'active',
-            created_by BIGINT UNSIGNED COMMENT 'Staff ID who registered',
+            blood_group VARCHAR(10),
+            emergency_contact_name VARCHAR(100),
+            emergency_contact_phone VARCHAR(20),
+            medical_history TEXT,
+            status ENUM('active', 'inactive') DEFAULT 'active',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_patient_id (patient_id),
             INDEX idx_phone (phone),
-            INDEX idx_status (status),
-            INDEX idx_registration_date (registration_date),
-            INDEX idx_created_by (created_by),
-            FULLTEXT idx_name (first_name, last_name)
+            INDEX idx_status_created (status, created_at DESC),
+            INDEX idx_email (email),
+            INDEX idx_age_gender (age, gender),
+            INDEX idx_blood_group (blood_group),
+            FULLTEXT idx_search (full_name, phone, patient_id)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -116,6 +158,9 @@ class Database {
 
 	/**
 	 * Create patient history table [PRO-B].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_patient_history_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}patient_history (
@@ -138,6 +183,9 @@ class Database {
 
 	/**
 	 * Create patient consents table [ENT].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_patient_consents_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}patient_consents (
@@ -159,6 +207,17 @@ class Database {
 
 	/**
 	 * Create appointments table [MVP].
+	 *
+	 * Optimized indexes:
+	 * - idx_appointment_id: Quick appointment lookup
+	 * - idx_doctor_date_time: Doctor's daily schedule (most common query)
+	 * - idx_patient_date: Patient appointment history
+	 * - idx_status_date: List by status and date
+	 * - idx_payment_status: Unpaid appointments report
+	 * - idx_created_at: Recent appointments
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_appointments_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}appointments (
@@ -181,11 +240,11 @@ class Database {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_appointment_id (appointment_id),
-            INDEX idx_doctor_date (doctor_id, appointment_date),
-            INDEX idx_patient (patient_id),
-            INDEX idx_status (status),
+            INDEX idx_doctor_date_time (doctor_id, appointment_date, appointment_time),
+            INDEX idx_patient_date (patient_id, appointment_date DESC),
+            INDEX idx_status_date (status, appointment_date),
             INDEX idx_payment_status (payment_status),
-            INDEX idx_date_time (appointment_date, appointment_time)
+            INDEX idx_created_at (created_at DESC)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -193,6 +252,9 @@ class Database {
 
 	/**
 	 * Create beds table [PRO-S].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_beds_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}beds (
@@ -215,6 +277,9 @@ class Database {
 
 	/**
 	 * Create IPD admissions table [PRO-S].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_ipd_admissions_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}ipd_admissions (
@@ -249,6 +314,9 @@ class Database {
 
 	/**
 	 * Create IPD packages table [PRO-B].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_ipd_packages_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}ipd_packages (
@@ -269,6 +337,9 @@ class Database {
 
 	/**
 	 * Create lab tests table [PRO-S].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_lab_tests_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}lab_tests (
@@ -305,6 +376,9 @@ class Database {
 
 	/**
 	 * Create lab catalog table [PRO-S].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_lab_catalog_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}lab_catalog (
@@ -327,6 +401,9 @@ class Database {
 
 	/**
 	 * Create OT bookings table [PRO-B].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_ot_bookings_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}ot_bookings (
@@ -364,6 +441,9 @@ class Database {
 
 	/**
 	 * Create prescriptions table [PRO-B].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_prescriptions_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}prescriptions (
@@ -394,6 +474,17 @@ class Database {
 
 	/**
 	 * Create invoices table [MVP] - CRITICAL.
+	 *
+	 * Optimized indexes for financial reports:
+	 * - idx_invoice_id: Quick invoice lookup
+	 * - idx_payment_status_date: Outstanding invoices report (most common)
+	 * - idx_patient_date: Patient invoice history
+	 * - idx_due_date_status: Overdue invoices alert
+	 * - idx_type_date: Revenue by type report
+	 * - idx_issued_by: Staff performance tracking
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_invoices_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}invoices (
@@ -418,11 +509,11 @@ class Database {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_invoice_id (invoice_id),
-            INDEX idx_patient_status (patient_id, payment_status),
-            INDEX idx_invoice_type (invoice_type),
-            INDEX idx_due_date (due_date),
-            INDEX idx_issued_by (issued_by),
-            INDEX idx_invoice_date (invoice_date)
+            INDEX idx_payment_status_date (payment_status, invoice_date DESC),
+            INDEX idx_patient_date (patient_id, invoice_date DESC),
+            INDEX idx_due_date_status (due_date, payment_status),
+            INDEX idx_type_date (invoice_type, invoice_date),
+            INDEX idx_issued_by (issued_by)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -430,6 +521,17 @@ class Database {
 
 	/**
 	 * Create payments table [MVP] - CRITICAL.
+	 *
+	 * Optimized indexes for payment tracking:
+	 * - idx_payment_id: Quick payment lookup
+	 * - idx_invoice_id: Invoice payment history
+	 * - idx_payment_date: Daily collection report
+	 * - idx_method_date: Payment method analysis
+	 * - idx_received_by_date: Staff collection tracking
+	 * - idx_patient_date: Patient payment history
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_payments_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}payments (
@@ -447,9 +549,10 @@ class Database {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_payment_id (payment_id),
             INDEX idx_invoice_id (invoice_id),
-            INDEX idx_payment_date (payment_date),
-            INDEX idx_received_by (received_by),
-            INDEX idx_patient (patient_id)
+            INDEX idx_payment_date (payment_date DESC),
+            INDEX idx_method_date (payment_method, payment_date),
+            INDEX idx_received_by_date (received_by, payment_date DESC),
+            INDEX idx_patient_date (patient_id, payment_date DESC)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -457,6 +560,9 @@ class Database {
 
 	/**
 	 * Create medicines table [PRO-B].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_medicines_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}medicines (
@@ -489,6 +595,9 @@ class Database {
 
 	/**
 	 * Create staff table [ALL].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_staff_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}staff (
@@ -525,6 +634,9 @@ class Database {
 
 	/**
 	 * Create attendance table [PRO-B].
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_attendance_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}attendance (
@@ -550,6 +662,16 @@ class Database {
 
 	/**
 	 * Create audit log table [ALL] - CRITICAL.
+	 *
+	 * Optimized indexes for security and compliance:
+	 * - idx_user_action_date: User activity tracking
+	 * - idx_entity_date: Entity change history
+	 * - idx_action_date: Action-specific reports
+	 * - idx_created_at: Chronological audit trail
+	 * - idx_ip_address: IP-based security analysis
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_audit_log_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}audit_log (
@@ -563,10 +685,11 @@ class Database {
             ip_address VARCHAR(45),
             user_agent TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_user_id (user_id),
-            INDEX idx_entity (entity_type, entity_id),
-            INDEX idx_action (action),
-            INDEX idx_created_at (created_at)
+            INDEX idx_user_action_date (user_id, action, created_at DESC),
+            INDEX idx_entity_date (entity_type, entity_id, created_at DESC),
+            INDEX idx_action_date (action, created_at DESC),
+            INDEX idx_created_at (created_at DESC),
+            INDEX idx_ip_address (ip_address)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -574,6 +697,14 @@ class Database {
 
 	/**
 	 * Create error log table [ALL].
+	 *
+	 * Optimized indexes for debugging and monitoring:
+	 * - idx_level_date: Error severity tracking
+	 * - idx_created_at: Chronological error log
+	 * - idx_user_id: User-specific error patterns
+	 *
+	 * @param string $prefix          Database table prefix.
+	 * @param string $charset_collate Database charset collation.
 	 */
 	private static function create_error_log_table( $prefix, $charset_collate ) {
 		$sql = "CREATE TABLE {$prefix}error_log (
@@ -586,8 +717,9 @@ class Database {
             user_agent TEXT,
             url VARCHAR(255),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_level (level),
-            INDEX idx_created_at (created_at)
+            INDEX idx_level_date (level, created_at DESC),
+            INDEX idx_created_at (created_at DESC),
+            INDEX idx_user_id (user_id)
         ) $charset_collate;";
 
 		dbDelta( $sql );
@@ -601,14 +733,30 @@ class Database {
 
 		$table = $wpdb->prefix . 'iyoraa_db_version';
 
-		$wpdb->insert(
-			$table,
-			[
-				'version'     => self::DB_VERSION,
-				'description' => 'Initial database schema - All 19 tables created',
-			]
+		// Prepare and execute insert query following WordPress coding standards.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query(
+			$wpdb->prepare(
+				sprintf(
+					'INSERT INTO %s (version, description) VALUES (%%s, %%s)',
+					$table // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Table names cannot be parameterized.
+				),
+				self::DB_VERSION,
+				'Initial database schema - All 19 tables created'
+			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		update_option( 'iyoraa_db_version', self::DB_VERSION );
+	}
+
+	/**
+	 * Get resource limit for a specific resource type.
+	 *
+	 * @param string $resource_type Resource type (patients, appointments, etc).
+	 * @return int Limit value (-1 = unlimited).
+	 */
+	public static function get_resource_limit( $resource_type ) {
+		return LicenseManager::get_resource_limit( $resource_type );
 	}
 }

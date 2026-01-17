@@ -1,64 +1,84 @@
-import React from "react";
+import { useEffect } from "react";
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+  Link,
+} from "react-router-dom";
+import PatientList from "./components/PatientList";
+import PatientForm from "./components/PatientForm";
+import PatientDetail from "./components/PatientDetail";
+
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Redirect to /patients if at root
+  useEffect(() => {
+    if (location.pathname === '/') {
+      navigate('/patients', { replace: true });
+    }
+  }, [location, navigate]);
+  
+  return (
+      <div className="iyoraa-app">
+        <header className="iyoraa-header">
+          <div className="header-container">
+            <h1>Iyoraa Hospital Management System</h1>
+            <div className="tier-badge">
+              {window.iyoraaData?.currentTier || "FREE"}
+            </div>
+          </div>
+        </header>
+
+        <nav className="iyoraa-nav">
+          <div className="nav-container">
+            <Link to="/patients" className={`nav-link ${location.pathname.startsWith('/patients') ? 'active' : ''}`}>
+              Patients
+            </Link>
+            <a href="#!" className="nav-link disabled">
+              Appointments
+            </a>
+            <a href="#!" className="nav-link disabled">
+              Billing
+            </a>
+            <a href="#!" className="nav-link disabled">
+              Reports
+            </a>
+          </div>
+        </nav>
+
+        <main className="iyoraa-main">
+          <Routes>
+            <Route path="/" element={<PatientList />} />
+            <Route path="/patients" element={<PatientList />} />
+            <Route path="/patients/new" element={<PatientForm />} />
+            <Route path="/patients/:id" element={<PatientDetail />} />
+            <Route path="/patients/:id/edit" element={<PatientForm />} />
+          </Routes>
+        </main>
+
+        <footer className="iyoraa-footer">
+          <p>
+            Iyoraa Hospital Management System v
+            {window.iyoraaData?.version || "1.0.0"}
+          </p>
+        </footer>
+      </div>
+  );
+}
 
 function App() {
-  // Access WordPress localized data
-  const { tier, tierName } = window.iyoraaData || {
-    tier: "free",
-    tierName: "FREE",
-  };
-
+  console.log('Iyoraa App mounted successfully!');
+  console.log('iyoraaData:', window.iyoraaData);
+  
   return (
-    <div className="iyoraa-container">
-      <header className="iyoraa-header">
-        <h1>Iyoraa - Hospital Management System</h1>
-        <div className="tier-badge">{tierName}</div>
-      </header>
-
-      <div className="iyoraa-dashboard">
-        <div className="welcome-card">
-          <h2>Welcome to Iyoraa MVP!</h2>
-          <p>Your hospital management system is successfully installed.</p>
-          <p className="version">Version 1.0.0 - MVP Release</p>
-        </div>
-
-        <div className="quick-stats">
-          <div className="stat-card">
-            <h3>Patients</h3>
-            <p className="stat-number">0</p>
-            <p className="stat-label">Total Registered</p>
-          </div>
-
-          <div className="stat-card">
-            <h3>Appointments</h3>
-            <p className="stat-number">0</p>
-            <p className="stat-label">This Month</p>
-          </div>
-
-          <div className="stat-card">
-            <h3>Due Amount</h3>
-            <p className="stat-number">৳ 0</p>
-            <p className="stat-label">Outstanding</p>
-          </div>
-        </div>
-
-        <div className="info-section">
-          <h3>Next Steps:</h3>
-          <ol>
-            <li>
-              Run <code>composer install</code> to install PHP dependencies
-            </li>
-            <li>
-              Run <code>npm install</code> to install JavaScript dependencies
-            </li>
-            <li>
-              Run <code>npm start</code> to start development mode
-            </li>
-            <li>Check database - all 19 tables should be created</li>
-            <li>Start building Patient Management module (Phase 2)</li>
-          </ol>
-        </div>
-      </div>
-    </div>
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

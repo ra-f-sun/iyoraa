@@ -1,7 +1,6 @@
 <?php
-
 /**
- * Admin Assets Manager
+ * Admin Assets Manage
  *
  * Handles enqueuing of admin scripts and styles.
  *
@@ -85,10 +84,15 @@ class AdminAssets {
 			'iyoraa-app',
 			'iyoraaData',
 			[
-				'apiUrl'   => rest_url( 'iyoraa/v1' ),
-				'nonce'    => wp_create_nonce( 'wp_rest' ),
-				'tier'     => LicenseManager::get_tier(),
-				'tierName' => LicenseManager::get_tier_name(),
+				'apiUrl'      => rest_url( 'iyoraa/v1' ),
+				'nonce'       => wp_create_nonce( 'wp_rest' ),
+				'tier'        => LicenseManager::get_tier(),
+				'tierName'    => LicenseManager::get_tier_name(),
+				'currentTier' => strtoupper( LicenseManager::get_tier() ),
+				'version'     => IYORAA_VERSION,
+				'limits'      => [
+					'patients' => LicenseManager::get_tier() === 'free' ? 100 : -1,
+				],
 			]
 		);
 	}
