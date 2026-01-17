@@ -12,7 +12,7 @@ const usePatients = () => {
   const [totalPatients, setTotalPatients] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  const apiBase = window.iyoraaData?.restUrl || "/wp-json/iyoraa/v1";
+  const apiBase = window.iyoraaData?.apiUrl || "/wp-json/iyoraa/v1";
   const nonce = window.iyoraaData?.nonce || "";
 
   /**

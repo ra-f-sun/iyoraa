@@ -8,6 +8,7 @@
 namespace WPHelpZone\Iyoraa\API;
 
 use WPHelpZone\Iyoraa\Core\PatientManager;
+use WPHelpZone\Iyoraa\Security\RateLimiter;
 
 /**
  * Patient API class.
@@ -273,19 +274,94 @@ class PatientAPI {
 	/**
 	 * Check permission callback.
 	 *
-	 * @return bool True if user can edit, false otherwise.
+	 * Verifies user capability and rate limiting.
+	 *
+	 * @param \WP_REST_Request $request Request object.
+	 * @return bool|\WP_Error True if allowed, WP_Error if denied.
 	 */
-	public static function check_permission() {
-		return current_user_can( 'edit_posts' );
+	public static function check_permission( $request ) {
+		// Check user capability.
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'You do not have permission to perform this action.', 'iyoraa' ),
+				[ 'status' => 403 ]
+			);
+		}
+
+		// Check rate limit.
+		$rate_limiter = new RateLimiter( 60, 60 ); // 60 requests per minute.
+		$identifier   = $rate_limiter->get_identifier();
+
+		if ( ! $rate_limiter->check_limit( $identifier ) ) {
+			$reset_time = $rate_limiter->get_reset_time( $identifier );
+
+			return new \WP_Error(
+				'rate_limit_exceeded',
+				sprintf(
+					/* translators: %d: seconds until rate limit resets */
+					__( 'Rate limit exceeded. Please try again in %d seconds.', 'iyoraa' ),
+					$reset_time
+				),
+				[
+					'status'     => 429,
+					'reset_time' => $reset_time,
+					'remaining'  => 0,
+				]
+			);
+		}
+
+		// Add rate limit headers to response.
+		add_filter(
+			'rest_post_dispatch',
+			function ( $result, $server, $request ) use ( $rate_limiter, $identifier ) {
+				$result->header( 'X-RateLimit-Limit', 60 );
+				$result->header( 'X-RateLimit-Remaining', $rate_limiter->get_remaining_requests( $identifier ) );
+				$result->header( 'X-RateLimit-Reset', time() + $rate_limiter->get_reset_time( $identifier ) );
+				return $result;
+			},
+			10,
+			3
+		);
+
+		return true;
 	}
 
 	/**
 	 * Check read permission callback.
 	 *
-	 * @return bool True if user can read, false otherwise.
+	 * @param \WP_REST_Request $request Request object.
+	 * @return bool|\WP_Error True if allowed, WP_Error if denied.
 	 */
-	public static function check_read_permission() {
-		return current_user_can( 'read' );
+	public static function check_read_permission( $request ) {
+		// Check user capability - must be logged in and have edit_posts.
+		if ( ! is_user_logged_in() || ! current_user_can( 'edit_posts' ) ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'You do not have permission to view this content.', 'iyoraa' ),
+				[ 'status' => 403 ]
+			);
+		}
+
+		// Apply rate limiting for read operations too (more lenient).
+		$rate_limiter = new RateLimiter( 120, 60 ); // 120 requests per minute for reads.
+		$identifier   = $rate_limiter->get_identifier();
+
+		if ( ! $rate_limiter->check_limit( $identifier ) ) {
+			$reset_time = $rate_limiter->get_reset_time( $identifier );
+
+			return new \WP_Error(
+				'rate_limit_exceeded',
+				sprintf(
+					/* translators: %d: seconds until rate limit resets */
+					__( 'Rate limit exceeded. Please try again in %d seconds.', 'iyoraa' ),
+					$reset_time
+				),
+				[ 'status' => 429 ]
+			);
+		}
+
+		return true;
 	}
 
 	/**

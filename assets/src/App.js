@@ -1,16 +1,29 @@
+import { useEffect } from "react";
 import {
-  BrowserRouter as Router,
+  HashRouter as Router,
   Routes,
   Route,
   Navigate,
+  useNavigate,
+  useLocation,
+  Link,
 } from "react-router-dom";
 import PatientList from "./components/PatientList";
 import PatientForm from "./components/PatientForm";
 import PatientDetail from "./components/PatientDetail";
 
-function App() {
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Redirect to /patients if at root
+  useEffect(() => {
+    if (location.pathname === '/') {
+      navigate('/patients', { replace: true });
+    }
+  }, [location, navigate]);
+  
   return (
-    <Router basename="/wp-admin/admin.php?page=iyoraa">
       <div className="iyoraa-app">
         <header className="iyoraa-header">
           <div className="header-container">
@@ -23,9 +36,9 @@ function App() {
 
         <nav className="iyoraa-nav">
           <div className="nav-container">
-            <a href="#!" className="nav-link active">
+            <Link to="/patients" className={`nav-link ${location.pathname.startsWith('/patients') ? 'active' : ''}`}>
               Patients
-            </a>
+            </Link>
             <a href="#!" className="nav-link disabled">
               Appointments
             </a>
@@ -40,7 +53,7 @@ function App() {
 
         <main className="iyoraa-main">
           <Routes>
-            <Route path="/" element={<Navigate to="/patients" replace />} />
+            <Route path="/" element={<PatientList />} />
             <Route path="/patients" element={<PatientList />} />
             <Route path="/patients/new" element={<PatientForm />} />
             <Route path="/patients/:id" element={<PatientDetail />} />
@@ -55,6 +68,16 @@ function App() {
           </p>
         </footer>
       </div>
+  );
+}
+
+function App() {
+  console.log('Iyoraa App mounted successfully!');
+  console.log('iyoraaData:', window.iyoraaData);
+  
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

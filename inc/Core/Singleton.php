@@ -49,7 +49,7 @@ abstract class Singleton {
 	/**
 	 * Prevent cloning.
 	 */
-	final private function __clone() {
+	protected function __clone() {
 		// Cloning is not allowed.
 	}
 
@@ -58,7 +58,7 @@ abstract class Singleton {
 	 *
 	 * @throws \Exception When trying to unserialize.
 	 */
-	final public function __wakeup() {
+	public function __wakeup() {
 		throw new \Exception( 'Cannot unserialize singleton' );
 	}
 }
