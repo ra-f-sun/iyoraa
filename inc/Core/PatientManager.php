@@ -10,6 +10,9 @@ namespace WPHelpZone\Iyoraa\Core;
 use WPHelpZone\Iyoraa\Validation\PatientValidator;
 use WPHelpZone\Iyoraa\Exceptions\ValidationException;
 use WPHelpZone\Iyoraa\Exceptions\DatabaseException;
+use WPHelpZone\Iyoraa\Exceptions\NotFoundException;
+use WPHelpZone\Iyoraa\Repositories\PatientRepository;
+use WPHelpZone\Iyoraa\DTOs\PatientDTO;
 
 /**
  * Patient Manager class.
@@ -18,6 +21,19 @@ use WPHelpZone\Iyoraa\Exceptions\DatabaseException;
  */
 class PatientManager extends Singleton {
 
+	/**
+	 * Patient repository instance.
+	 *
+	 * @var PatientRepository
+	 */
+	private $repository;
+
+	/**
+	 * Initialize manager.
+	 */
+	protected function init() {
+		$this->repository = new PatientRepository();
+	}
 
 	/**
 	 * Get patients table name.
@@ -41,128 +57,99 @@ class PatientManager extends Singleton {
 	 * Create a new patient.
 	 *
 	 * @param array $data Patient data.
-	 * @return array|WP_Error Patient data with ID or error.
+	 * @return PatientDTO|WP_Error Patient DTO or error.
 	 */
 	public function create_patient( $data ) {
-		// Check patient limit for FREE tier.
-		if ( ! $this->can_add_patient() ) {
-			return new \WP_Error(
-				'patient_limit_reached',
-				__( 'Patient limit reached. Upgrade to PRO to add more patients.', 'iyoraa' ),
-				[ 'status' => 403 ]
-			);
-		}
+		try {
+			// Check patient limit for FREE tier.
+			if ( ! $this->can_add_patient() ) {
+				return new \WP_Error(
+					'patient_limit_reached',
+					__( 'Patient limit reached. Upgrade to PRO to add more patients.', 'iyoraa' ),
+					[ 'status' => 403 ]
+				);
+			}
 
-		// Validate and sanitize patient data using PatientValidator.
-		$validation = $this->validate_patient_data( $data );
-		if ( is_wp_error( $validation ) ) {
-			return $validation;
-		}
+			// Validate patient data using PatientValidator.
+			$errors = PatientValidator::validate( $data );
+			if ( ! empty( $errors ) ) {
+				return new \WP_Error(
+					'validation_failed',
+					implode( ' ', $errors ),
+					[ 'status' => 400, 'errors' => $errors ]
+				);
+			}
 
-		// Sanitize input data using PatientValidator.
-		$sanitized_data = PatientValidator::sanitize( $data );
+			// Sanitize input data using PatientValidator.
+			$sanitized_data = PatientValidator::sanitize( $data );
 
-		// Generate unique patient ID.
-		$patient_id = $this->generate_patient_id();
+			// Check phone uniqueness (business logic).
+			if ( ! $this->is_phone_unique( $sanitized_data['phone'] ) ) {
+				return new \WP_Error(
+					'duplicate_phone',
+					__( 'This phone number is already registered.', 'iyoraa' ),
+					[ 'status' => 400 ]
+				);
+			}
 
-		global $wpdb;
+			// Generate unique patient ID.
+			$sanitized_data['patient_id'] = $this->generate_patient_id();
+			$sanitized_data['status']     = 'active';
+			$sanitized_data['created_at'] = current_time( 'mysql' );
+			$sanitized_data['updated_at'] = current_time( 'mysql' );
 
-		$insert_data = [
-			'patient_id'              => $patient_id,
-			'full_name'               => $sanitized_data['full_name'],
-			'age'                     => $sanitized_data['age'],
-			'gender'                  => $sanitized_data['gender'],
-			'phone'                   => $sanitized_data['phone'],
-			'email'                   => $sanitized_data['email'],
-			'address'                 => $sanitized_data['address'],
-			'blood_group'             => $sanitized_data['blood_group'],
-			'emergency_contact_name'  => $sanitized_data['emergency_contact_name'],
-			'emergency_contact_phone' => $sanitized_data['emergency_contact_phone'],
-			'medical_history'         => $sanitized_data['medical_history'],
-			'status'                  => 'active',
-			'created_at'              => current_time( 'mysql' ),
-			'updated_at'              => current_time( 'mysql' ),
-		];
+			// Create patient using repository.
+			$patient_id = $this->repository->create( $sanitized_data );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->query(
-			$wpdb->prepare(
-				"INSERT INTO {$this->get_table()} 
-				(patient_id, full_name, age, gender, phone, email, address, blood_group, 
-				emergency_contact_name, emergency_contact_phone, medical_history, status, created_at, updated_at) 
-				VALUES (%s, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-				$insert_data['patient_id'],
-				$insert_data['full_name'],
-				$insert_data['age'],
-				$insert_data['gender'],
-				$insert_data['phone'],
-				$insert_data['email'],
-				$insert_data['address'],
-				$insert_data['blood_group'],
-				$insert_data['emergency_contact_name'],
-				$insert_data['emergency_contact_phone'],
-				$insert_data['medical_history'],
-				$insert_data['status'],
-				$insert_data['created_at'],
-				$insert_data['updated_at']
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.NoCaching
+			// Log activity.
+			$this->log_activity( 'patient_created', $patient_id );
 
-		if ( false === $result ) {
+			// Return PatientDTO.
+			$patient_data = $this->repository->find( $patient_id );
+			return PatientDTO::from_array( $patient_data );
+
+		} catch ( DatabaseException $e ) {
 			return new \WP_Error(
 				'db_insert_error',
 				__( 'Failed to create patient.', 'iyoraa' ),
 				[ 'status' => 500 ]
 			);
+		} catch ( \Exception $e ) {
+			return new \WP_Error(
+				'unexpected_error',
+				$e->getMessage(),
+				[ 'status' => 500 ]
+			);
 		}
-
-		$insert_data['id'] = $wpdb->insert_id;
-
-		// Log activity.
-		$this->log_activity( 'patient_created', $insert_data['id'] );
-
-		return $insert_data;
 	}
 
 	/**
 	 * Get a patient by ID.
 	 *
 	 * @param int $id Patient database ID.
-	 * @return array|WP_Error Patient data or error.
+	 * @return PatientDTO|WP_Error Patient DTO or error.
 	 */
 	public function get_patient( $id ) {
-		global $wpdb;
+		try {
+			$patient_data = $this->repository->find( $id );
+			
+			if ( ! $patient_data ) {
+				return new \WP_Error(
+					'patient_not_found',
+					__( 'Patient not found.', 'iyoraa' ),
+					[ 'status' => 404 ]
+				);
+			}
 
-		$table = $this->get_table();
+			return PatientDTO::from_array( $patient_data );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
-		$patient = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$table} WHERE id = %d",
-				$id
-			),
-			ARRAY_A
-		);
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery
-	// phpcs:enable WordPress.DB.DirectDatabaseQuery.NoCaching
-
-		if ( ! $patient ) {
+		} catch ( \Exception $e ) {
 			return new \WP_Error(
-				'patient_not_found',
-				__( 'Patient not found.', 'iyoraa' ),
-				[ 'status' => 404 ]
+				'unexpected_error',
+				$e->getMessage(),
+				[ 'status' => 500 ]
 			);
 		}
-
-		return $patient;
 	}
 
 	/**
@@ -170,78 +157,67 @@ class PatientManager extends Singleton {
 	 *
 	 * @param int   $id   Patient database ID.
 	 * @param array $data Patient data to update.
-	 * @return array|WP_Error Updated patient data or error.
+	 * @return PatientDTO|WP_Error Updated patient DTO or error.
 	 */
 	public function update_patient( $id, $data ) {
-		// Check if patient exists.
-		$existing = $this->get_patient( $id );
-		if ( is_wp_error( $existing ) ) {
-			return $existing;
-		}
+		try {
+			// Check if patient exists.
+			$existing = $this->repository->find( $id );
+			if ( ! $existing ) {
+				return new \WP_Error(
+					'patient_not_found',
+					__( 'Patient not found.', 'iyoraa' ),
+					[ 'status' => 404 ]
+				);
+			}
 
-		// Validate and sanitize patient data using PatientValidator.
-		$validation = $this->validate_patient_data( $data, $id );
-		if ( is_wp_error( $validation ) ) {
-			return $validation;
-		}
+			// Validate patient data.
+			$errors = PatientValidator::validate( $data );
+			if ( ! empty( $errors ) ) {
+				return new \WP_Error(
+					'validation_failed',
+					implode( ' ', $errors ),
+					[ 'status' => 400, 'errors' => $errors ]
+				);
+			}
 
-		// Sanitize input data using PatientValidator.
-		$sanitized_data = PatientValidator::sanitize( $data );
+			// Sanitize input data.
+			$sanitized_data = PatientValidator::sanitize( $data );
 
-		global $wpdb;
+			// Check phone uniqueness (exclude current patient).
+			if ( ! $this->is_phone_unique( $sanitized_data['phone'], $id ) ) {
+				return new \WP_Error(
+					'duplicate_phone',
+					__( 'This phone number is already registered.', 'iyoraa' ),
+					[ 'status' => 400 ]
+				);
+			}
 
-		$update_data = [
-			'full_name'               => $sanitized_data['full_name'],
-			'age'                     => $sanitized_data['age'],
-			'gender'                  => $sanitized_data['gender'],
-			'phone'                   => $sanitized_data['phone'],
-			'email'                   => $sanitized_data['email'],
-			'address'                 => $sanitized_data['address'],
-			'blood_group'             => $sanitized_data['blood_group'],
-			'emergency_contact_name'  => $sanitized_data['emergency_contact_name'],
-			'emergency_contact_phone' => $sanitized_data['emergency_contact_phone'],
-			'medical_history'         => $sanitized_data['medical_history'],
-			'updated_at'              => current_time( 'mysql' ),
-		];
+			$sanitized_data['updated_at'] = current_time( 'mysql' );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$result = $wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$this->get_table()} 
-				SET full_name = %s, age = %d, gender = %s, phone = %s, email = %s, 
-					address = %s, blood_group = %s, emergency_contact_name = %s, 
-					emergency_contact_phone = %s, medical_history = %s, updated_at = %s 
-				WHERE id = %d",
-				$update_data['full_name'],
-				$update_data['age'],
-				$update_data['gender'],
-				$update_data['phone'],
-				$update_data['email'],
-				$update_data['address'],
-				$update_data['blood_group'],
-				$update_data['emergency_contact_name'],
-				$update_data['emergency_contact_phone'],
-				$update_data['medical_history'],
-				$update_data['updated_at'],
-				$id
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.NoCaching
+			// Update patient using repository.
+			$this->repository->update( $id, $sanitized_data );
 
-		if ( false === $result ) {
+			// Log activity.
+			$this->log_activity( 'patient_updated', $id );
+
+			// Return updated PatientDTO.
+			$updated_data = $this->repository->find( $id );
+			return PatientDTO::from_array( $updated_data );
+
+		} catch ( DatabaseException $e ) {
 			return new \WP_Error(
 				'db_update_error',
 				__( 'Failed to update patient.', 'iyoraa' ),
 				[ 'status' => 500 ]
 			);
+		} catch ( \Exception $e ) {
+			return new \WP_Error(
+				'unexpected_error',
+				$e->getMessage(),
+				[ 'status' => 500 ]
+			);
 		}
-
-		// Log activity.
-		$this->log_activity( 'patient_updated', $id );
-
-		return $this->get_patient( $id );
 	}
 
 	/**
@@ -251,39 +227,41 @@ class PatientManager extends Singleton {
 	 * @return bool|WP_Error True on success or error.
 	 */
 	public function delete_patient( $id ) {
-		// Check if patient exists.
-		$existing = $this->get_patient( $id );
-		if ( is_wp_error( $existing ) ) {
-			return $existing;
-		}
+		try {
+			// Check if patient exists.
+			$existing = $this->repository->find( $id );
+			if ( ! $existing ) {
+				return new \WP_Error(
+					'patient_not_found',
+					__( 'Patient not found.', 'iyoraa' ),
+					[ 'status' => 404 ]
+				);
+			}
 
-		global $wpdb;
+			// Soft delete - mark as inactive.
+			$this->repository->update( $id, [
+				'status'     => 'inactive',
+				'updated_at' => current_time( 'mysql' ),
+			] );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$result = $wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$this->get_table()} 
-				SET status = %s, updated_at = %s 
-				WHERE id = %d",
-				'inactive',
-				current_time( 'mysql' ),
-				$id
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// Log activity.
+			$this->log_activity( 'patient_deleted', $id );
 
-		if ( false === $result ) {
+			return true;
+
+		} catch ( DatabaseException $e ) {
 			return new \WP_Error(
 				'db_delete_error',
 				__( 'Failed to delete patient.', 'iyoraa' ),
 				[ 'status' => 500 ]
 			);
+		} catch ( \Exception $e ) {
+			return new \WP_Error(
+				'unexpected_error',
+				$e->getMessage(),
+				[ 'status' => 500 ]
+			);
 		}
-
-		// Log activity.
-		$this->log_activity( 'patient_deleted', $id );
-
-		return true;
 	}
 
 	/**
@@ -293,43 +271,27 @@ class PatientManager extends Singleton {
 	 * @return array Patients data with pagination info.
 	 */
 	public function list_patients( $args = [] ) {
-		global $wpdb;
-
 		$defaults = [
 			'page'     => 1,
 			'per_page' => 20,
 			'status'   => 'active',
-			'orderby'  => 'created_at',
-			'order'    => 'DESC',
 		];
 
-		$args = wp_parse_args( $args, $defaults );
-
+		$args   = wp_parse_args( $args, $defaults );
 		$offset = ( $args['page'] - 1 ) * $args['per_page'];
-		$table  = $this->get_table();
 
-		// Build query.
-		$where = $wpdb->prepare( 'WHERE status = %s', $args['status'] );
+		// Use repository to get patients.
+		$patients = $this->repository->find_by_status( $args['status'], $args['per_page'], $offset );
+		$total    = $this->repository->count();
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$patients = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$table} 
-				{$where} 
-				ORDER BY {$args['orderby']} {$args['order']} 
-				LIMIT %d OFFSET %d",
-				$args['per_page'],
-				$offset
-			),
-			ARRAY_A
-		);
-
-		$total = $wpdb->get_var( "SELECT COUNT(*) FROM {$table} {$where}" );
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// Convert to DTOs.
+		$patient_dtos = array_map( function( $patient ) {
+			return PatientDTO::from_array( $patient )->to_array();
+		}, $patients );
 
 		return [
-			'patients'    => $patients,
-			'total'       => (int) $total,
+			'patients'    => $patient_dtos,
+			'total'       => $total,
 			'page'        => (int) $args['page'],
 			'per_page'    => (int) $args['per_page'],
 			'total_pages' => ceil( $total / $args['per_page'] ),
@@ -344,69 +306,27 @@ class PatientManager extends Singleton {
 	 * @return array Search results.
 	 */
 	public function search_patients( $query, $args = [] ) {
-		global $wpdb;
-
 		$defaults = [
 			'page'     => 1,
 			'per_page' => 20,
-			'status'   => 'active',
 		];
 
 		$args = wp_parse_args( $args, $defaults );
 
-		$offset = ( $args['page'] - 1 ) * $args['per_page'];
-		$search = '%' . $wpdb->esc_like( $query ) . '%';
-		$table  = $this->get_table();
+		// Use repository to search patients.
+		$patients = $this->repository->search( $query, $args['per_page'] );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$patients = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$table} 
-				WHERE status = %s 
-				AND (
-					patient_id LIKE %s 
-					OR full_name LIKE %s 
-					OR phone LIKE %s 
-					OR email LIKE %s
-				)
-				ORDER BY created_at DESC 
-				LIMIT %d OFFSET %d",
-				$args['status'],
-				$search,
-				$search,
-				$search,
-				$search,
-				$args['per_page'],
-				$offset
-			),
-			ARRAY_A
-		);
-
-		$total = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} 
-				WHERE status = %s 
-				AND (
-					patient_id LIKE %s 
-					OR full_name LIKE %s 
-					OR phone LIKE %s 
-					OR email LIKE %s
-				)",
-				$args['status'],
-				$search,
-				$search,
-				$search,
-				$search
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// Convert to DTOs.
+		$patient_dtos = array_map( function( $patient ) {
+			return PatientDTO::from_array( $patient )->to_array();
+		}, $patients );
 
 		return [
-			'patients'    => $patients,
-			'total'       => (int) $total,
+			'patients'    => $patient_dtos,
+			'total'       => count( $patient_dtos ),
 			'page'        => (int) $args['page'],
 			'per_page'    => (int) $args['per_page'],
-			'total_pages' => ceil( $total / $args['per_page'] ),
+			'total_pages' => 1,
 		];
 	}
 
@@ -416,18 +336,7 @@ class PatientManager extends Singleton {
 	 * @return int Patient count.
 	 */
 	public function get_patient_count() {
-		global $wpdb;
-
-		$table = $this->get_table();
-
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table} WHERE status = %s",
-				'active'
-			)
-		);
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $this->repository->count_active();
 	}
 
 	/**
@@ -483,51 +392,6 @@ class PatientManager extends Singleton {
 		}
 
 		return $prefix . str_pad( $number, 4, '0', STR_PAD_LEFT );
-	}
-
-	/**
-	 * Validate patient data using PatientValidator.
-	 *
-	 * @param array $data       Patient data to validate.
-	 * @param int   $patient_id Optional patient ID for update validation.
-	 * @return true|\WP_Error True if valid, WP_Error otherwise.
-	 */
-	private function validate_patient_data( $data, $patient_id = null ) {
-		try {
-			// Use PatientValidator for comprehensive validation.
-			$errors = PatientValidator::validate( $data );
-			
-			if ( ! empty( $errors ) ) {
-				// Convert validation errors to WP_Error format.
-				$error_messages = [];
-				foreach ( $errors as $field => $message ) {
-					$error_messages[] = $message;
-				}
-				
-				return new \WP_Error(
-					'validation_failed',
-					implode( ' ', $error_messages ),
-					[ 'status' => 400, 'errors' => $errors ]
-				);
-			}
-
-			// Check phone uniqueness (business logic, not pure validation).
-			if ( ! $this->is_phone_unique( $data['phone'], $patient_id ) ) {
-				return new \WP_Error(
-					'duplicate_phone',
-					__( 'This phone number is already registered.', 'iyoraa' ),
-					[ 'status' => 400 ]
-				);
-			}
-
-			return true;
-		} catch ( \Exception $e ) {
-			return new \WP_Error(
-				'validation_error',
-				$e->getMessage(),
-				[ 'status' => 500 ]
-			);
-		}
 	}
 
 	/**

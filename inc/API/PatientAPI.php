@@ -140,11 +140,16 @@ class PatientAPI {
 			return $result;
 		}
 
+		// Convert DTO to array for API response.
+		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' ) 
+			? $result->to_array() 
+			: $result;
+
 		return new \WP_REST_Response(
 			[
 				'success' => true,
 				'message' => __( 'Patient created successfully.', 'iyoraa' ),
-				'data'    => $result,
+				'data'    => $patient_data,
 			],
 			201
 		);
@@ -188,10 +193,15 @@ class PatientAPI {
 			return $result;
 		}
 
+		// Convert DTO to array for API response.
+		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' ) 
+			? $result->to_array() 
+			: $result;
+
 		return new \WP_REST_Response(
 			[
 				'success' => true,
-				'data'    => $result,
+				'data'    => $patient_data,
 			],
 			200
 		);
@@ -213,11 +223,16 @@ class PatientAPI {
 			return $result;
 		}
 
+		// Convert DTO to array for API response.
+		$patient_data = is_object( $result ) && method_exists( $result, 'to_array' ) 
+			? $result->to_array() 
+			: $result;
+
 		return new \WP_REST_Response(
 			[
 				'success' => true,
 				'message' => __( 'Patient updated successfully.', 'iyoraa' ),
-				'data'    => $result,
+				'data'    => $patient_data,
 			],
 			200
 		);
