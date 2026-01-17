@@ -11,6 +11,7 @@ namespace WPHelpZone\Iyoraa\API;
 
 use WPHelpZone\Iyoraa\Core\LicenseManager;
 use WPHelpZone\Iyoraa\API\PatientAPI;
+use WPHelpZone\Iyoraa\API\AppointmentAPI;
 
 /**
  * API Registry class.
@@ -31,7 +32,9 @@ class APIRegistry {
 		// Patient endpoints.
 		PatientAPI::register_routes();
 
-		// Future: Appointment endpoints will be registered here in Phase 3.
+		// Appointment endpoints.
+		AppointmentAPI::register_routes();
+
 		// Future: Billing endpoints will be registered here in Phase 4.
 	}
 
